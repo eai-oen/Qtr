@@ -28,17 +28,11 @@ export default class SenderScreen extends React.Component {
 
   // the bytes are read right to left
   number_to_bytes(num, len=4){
-  	console.log(num);
-  	console.log(len);
-
   	var res = [];
   	for (var i=0; i<len; i++){
   		res.append(num%2);
   		num = Math.floor(num/2);
   	}
-
-  	console.log("returning");
-  	console.log(res);
   	return res;
   }
 
@@ -71,10 +65,9 @@ export default class SenderScreen extends React.Component {
 			blocks.append(block);
 		}
 
-		this.setState({
-			sourceBlocks: blocks,
-			sourceBlockNum: m
-		});	
+		this.sourceBlocks = blocks;
+		this.sourceBlockNum = m;
+		this.sendWhichBlock = 0;	
 	}
 
 
