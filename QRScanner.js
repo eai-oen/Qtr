@@ -5,11 +5,22 @@ import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 
+
 export default class ScannerScreen extends React.Component {
+  buffers = {
+    buffer: null,       // Bytes buffer
+    scanning: true,
+    loaded: false,
+    nreceived: null,       // Bytes buffer
+    ereceived: null,       // Bytes buffer
+  }
   state = {
     hasPermission: null,
-    scanned: false,
-    data: "nodata",
+    scanned: 0,
+    scanning: true,
+    loaded: false,
+    nreceived: null,    // number of blocks received
+    ereceived: null,    // number of blocks expected
     cachedFilePath: null,
   }
 
@@ -28,22 +39,54 @@ export default class ScannerScreen extends React.Component {
     this.setState({hasPermission: status === "granted"});
   }
 
+  parse = (s) => {
+    if(!this.buffers.scanning) {return}
+    var bnumber = parseInt(s.slice(0, 4)); 
+    var total = parseInt(s.slice(4, 8)); 
+    var data = s.slice(8);
+    // Init logic
+    if(this.buffers.buffer === null) {
+      this.setState({
+        nreceived: 0, 
+        ereceived: total, 
+      });
+      this.buffers.nreceived = 0;
+      this.buffers.ereceived = total;
+      this.buffers.buffer = new Array(total).fill(null);
+    }
+    // Add logic
+    if(this.buffers.buffer[bnumber] === null) {
+      console.log("Received block " + bnumber + " out of " + total)
+      this.buffers.buffer[bnumber] = data;
+      this.setState({nreceived: this.state.nreceived + 1});
+      this.buffers.nreceived++;
+    }
+    // End logiec
+    if(this.buffers.nreceived === this.buffers.ereceived){
+      console.log("Received all blocks")
+      this.setState({scanning: false, loaded: true});
+      this.buffers.scanning = false;
+      this.buffers.loaded = true;
+      
+      this.processFile(this.buffer.join())
+    }
+  }
+
+  qrscanned = ({ type, data }) => {
+    this.parse(data);
+    this.setState((state) => ({scanned: state.scanned + 1}));
+  }
+  
   async saveImage() {
     await MediaLibrary.saveToLibraryAsync(this.state.filepath);
   }
 
-  async processImage(base64string, fileExtension) {
-    const filepath = FileSystem.cacheDirectory + "qrt_file" + fileExtension;
+  async processFile(base64string, fileExtension) {
+    const filepath = FileSystem.cacheDirectory + "qtr_file" + fileExtension;
     await FileSystem.writeAsStringAsync(filepath, base64string, {encoding: FileSystem.EncodingType.Base64});
     this.setState({cachedFilePath: filepath});
 
-    Sharing.shareAsync(filepath);
-  }
-
-  handleBarCodeScanned = ({ type, data }) => {
-    this.setState({scanned: true});
-    alert(`Bar code with type ${type} and data ${data} has been scanned!`);
-    this.setState({data: data })
+    await Sharing.shareAsync(filepath);
   }
 
   render() {
@@ -55,14 +98,13 @@ export default class ScannerScreen extends React.Component {
     return (
       <View style={{flex: 1}}>
         <BarCodeScanner
-          onBarCodeScanned={this.state.scanned ? undefined : this.handleBarCodeScanned }
+          onBarCodeScanned={ this.qrscanned }
           barCodeTypes={[BarCodeScanner.Constants.BarCodeType.qr]}
           style={StyleSheet.absoluteFillObject}
-        />
+          />
         <Text>Scanner Screen</Text>
-
-        <Text> {this.state.data} is the data </Text>
-
+        <Text>Number scanned overall: {this.state.scanned}</Text>
+        <Text>Received {this.state.nreceived} out of {this.state.ereceived} codes. Loaded: {this.state.loaded.toString()}</Text>
       </View>
     )
   }

@@ -24,11 +24,23 @@ export default class SenderScreen extends React.Component {
   sourceBlocks = null;
   sourceBlockNum = -1;
 
+  pad(num, size) {
+    num = num.toString();
+    while (num.length < size) num = "0" + num;
+    return num;
+  }
+
+
   async componentDidMount() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       alert('Sorry, we need camera roll permissions to make this work!');
     }
+    setInterval(() => { this.setState(
+      (state) => ({
+        message: this.pad(state.blockno, 2) + "30asdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsf",
+        blockno: state.blockno == 30 ? 0 : state.blockno + 1,
+    })) }, 100)
   }
 
   // the bytes are read right to left
@@ -149,7 +161,7 @@ export default class SenderScreen extends React.Component {
             />
             <Text>image loaded with path {this.state.path}</Text>
            </View>)
-            
+
         }
       </View>
     );
