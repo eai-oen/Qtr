@@ -126,7 +126,6 @@ export default class ScannerScreen extends React.Component {
 
 /* 
 decodedSourceBlocks = {
-  length: -1
   data: [ [], [], [], ...  ]
 }
   the final list of decoded source blocks
@@ -147,21 +146,63 @@ function string_to_bytes(str){
 
 */
 
-
+// goes through the encodedBlocks and
+// checks to see if we can
+// resolve any to the decodedSourceBlocks
 function updateEncodedBlocks(){
 
-  this.encodedBlocks.forEach((val, ind) => {
-    
+  let runAgain = false;
+
+  this.encodedBlocks.forEach((encB, i) => { // for every encoded block
+    encB.inds.forEach((ind, j) => {   // look at the indices it xors together
+      if (ind <= this.decodedSourceBlocks.length &&
+        this.decodedSourceBlocks.data[ind] != null){ // if one of the indices is solved
+
+        // xor this shit out
+        this.decodedSourceBlocks.data[ind].forEach((byte, k) => {
+          encB.data[k] = encB.data[k] ^ byte;
+        });
+
+        // delete this index
+        encB.inds.splice(j, 1);
+      }
+    });
+
+    // if all but 1 is xor'd out, we move it to decoded
+    if (encB.inds.length == 1){
+      runAgain = true;
+
+      
+
+      // x is the current largest index in the decoded blocks
+      let x = this.decodedSourceBlocks.length; 
+
+      // ind is the ssource block index we want to add to  
+      let ind = encB.inds[0];
+
+      // add it to decoded
+      for (let k=x+1; k<=ind; k++)
+        this.decodedSourceBlocks.data.push(null);
+      this.decodedSourceBlocks.data[ind] = encB.data;
+
+      this.decodedSourceBlocks.length = Math.max(x, ind);
+
+      // delete it from encoded
+      this.encodedBlocks.splice(i, 1);
+
+      
+    }
+
   });
 
-  var n = this.encodedBlocks.length;
-  for (var i=0; i<n; i++){
-    var encB = this.encodedBlocks[i];
-    for (var j=0; j<encB.inds.length; j++){
-
-    }
+  // if there are new blocks added to source
+  // we should check the encoded blocks again
+  if (runAgain){
+    this.updateEncodedBlocks();
   }
 }
+
+
 
 function decodeOneBlock(blockData){
   // asusming blockData is a string
@@ -176,7 +217,7 @@ function decodeOneBlock(blockData){
 
   console.log('ok i read d: ');
   console.log(d);
-  console.log('and index ');
+  console.log('and indexes ');
   console.log(inds);
 
   // this is the main data; store it as number in bytes
@@ -186,48 +227,12 @@ function decodeOneBlock(blockData){
     data.push(dataStr.charCodeAt(i));
 
 
+  this.encodedSourceBlocks.push({
+    inds: inds,
+    data: data
+  });
+  
 
-  // see if any of the decode source blocks can
-  // xor away some contents
-  for (var i=0; i<d; i++){
-    if (inds[i] <= this.decodedSourceBlocks.length
-       && this.decodedSourceBlocks.data[inds[i]] != null){
-      var dSB = this.decodedSourceBlocks.data[inds[i]];
-
-      for (var j=0; j<dSB.length; j++)
-        data[j] = dSB[j] ^ data[j];
-
-      inds.splice(i, 1);
-    }
-  }
-
-
-  // add it to the decoded blocks if it only has 1 block left
-  if (inds.length == 1){
-    // x is the current largest index in the decoded blocks
-    var x = this.decodedSourceBlocks.length;
-    if (x < inds[0]){
-      // update the decoded source blocks array up
-      // to inds[0], which is wheere this source block goes
-      for (let i=x+1; i<=inds[0]; i++)
-        this.decodedSourceBlocks.data.push(null);
-      this.decodedSourceBlocks.length = index;
-    }
-
-    this.decodedSourceBlocks.data[index] = content;
-
-    // we run over all the encoded blocks to see if 
-    // there are any old fellas going in the 
-    // decoded source pile
-    updateEncodedBlocks();
-  }
-
-  else if (inds.length > 1){
-    this.encodedBlocks.push({
-        inds: inds,
-        data: data
-    });
-  }
-
+  this.updateEncodedBlocks();
 
 }
