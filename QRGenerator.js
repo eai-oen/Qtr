@@ -14,6 +14,8 @@ export default class SenderScreen extends React.Component {
     base64: "fuck",
     status: "choose",
     path: null,
+    message: "0030asdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsf",
+    blockno: 0,
   }
   async getFile() {
     const result = await DocumentPicker.getDocumentAsync();
@@ -21,11 +23,23 @@ export default class SenderScreen extends React.Component {
     console.log(result);
   }
 
+  pad(num, size) {
+    num = num.toString();
+    while (num.length < size) num = "0" + num;
+    return num;
+  }
+
+
   async componentDidMount() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       alert('Sorry, we need camera roll permissions to make this work!');
     }
+    setInterval(() => { this.setState(
+      (state) => ({
+        message: this.pad(state.blockno, 2) + "30asdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsf", 
+        blockno: state.blockno == 30 ? 0 : state.blockno + 1,
+    })) }, 100)
   }
 
   async getImage() {
@@ -54,7 +68,7 @@ export default class SenderScreen extends React.Component {
       <View>
         <Text>Sender Screen</Text>
         <QRCode
-          value="Minato Aqua"
+          value={this.state.message}
           size={300}
         />
         <Button
