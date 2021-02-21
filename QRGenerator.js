@@ -6,8 +6,6 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 
-//import DocumentPicker from 'react-native-document-picker';
-
 
 export default class SenderScreen extends React.Component {
   state = {
@@ -57,8 +55,6 @@ export default class SenderScreen extends React.Component {
 		let blocks = [];
 		let totalbytes = file_enc.length;
 		let totalblocks = Math.ceil(totalbytes/bytesPerBlock) + 1;
-    console.log("Number of blocks: " + totalblocks);
-    console.log("Length of file: " + totalbytes);
 
 
 		// the first block encodes the file extension
@@ -79,11 +75,6 @@ export default class SenderScreen extends React.Component {
 		setInterval( ()=>this.sendOneEncodedBlock() , 100);
 	}
 
-	sendOneBlock(){
-		var index = this.sendWhichBlock;
-		this.setState({ qrdata: this.sourceBlocks[index]});
-		this.sendWhichBlock = (index + 1) % this.sourceBlockNum;
-	}
 
   xorStrings(a, b){
     let s = '';
@@ -191,9 +182,6 @@ export default class SenderScreen extends React.Component {
 
 
 
-
-
-
 const chars =
   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
 
@@ -241,3 +229,7 @@ function btoa(input = ''){
 
   return output;
 }
+
+
+
+
