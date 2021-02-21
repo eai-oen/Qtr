@@ -79,7 +79,7 @@ export default class SenderScreen extends React.Component {
 		this.sourceBlockNum = totalblocks;
 		this.sendWhichBlock = 0;	
 
-		this.qrInterval = setInterval( ()=>this.sendOneBlock() , 100);
+		this.qrInterval = setInterval( ()=>this.sendOneEncodedBlock() , 100);
 	}
 
 
