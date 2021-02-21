@@ -131,7 +131,7 @@ export default class SenderScreen extends React.Component {
 	  console.log("header: " + header);
 
 	  // xor d source blocks together	  
-	  let block = new Array(d).fill(null);
+	  let blocks = new Array(d).fill(null);
     for (let i = 0; i < d; i++) {
       block[i] = this.sourceBlocks[inds[i]];
     }
