@@ -4,6 +4,7 @@ import { BarCodeScanner } from 'expo-barcode-scanner';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
+import { enableScreens } from 'react-native-screens';
 
 
 export default class ScannerScreen extends React.Component {
@@ -98,18 +99,27 @@ export default class ScannerScreen extends React.Component {
     if (this.state.hasPermission === false) 
       return <Text>No access to camera</Text>;
 
+    let scanStatus = "Searching for File...", percentage = 0;
+    if (this.state.ereceived !== "???") {
+      percentage = this.state.nreceived / this.state.ereceived * 100;
+
+      if (percentage < 100)
+        scanStatus = "Receiving....(" + this.state.nreceived.toString() + "/" + this.state.ereceived.toString() + ")";
+      else
+        scanStatus = "File received"
+    }
+
     return (
       <View style={{flex: 1}}>
+        <View style={{height: 30, width: '100%'}}>
+          <View style={{position: 'absolute',  height: 30, width: percentage.toString() + "%", backgroundColor: '#c2cad1'}}/>
+          <Text style={{flex: 1, alignSelf: 'center', justifyContent: 'center'}}>{scanStatus}</Text>
+        </View>
         <BarCodeScanner
           onBarCodeScanned={ this.qrscanned }
           barCodeTypes={[BarCodeScanner.Constants.BarCodeType.qr]}
-          style={StyleSheet.absoluteFillObject}
+          style={{flex: 1}}
           />
-        <Text>Scanner Info</Text>
-        <Text>QR codes scanned overall: {this.state.scanned}</Text>
-        <Text>Received {this.state.nreceived} out of {this.state.ereceived} codes.</Text>
-        <Text>Loaded: {this.state.loaded.toString()}</Text>
-        <Text>File Extension: {this.state.extension}</Text>
       </View>
     )
   }

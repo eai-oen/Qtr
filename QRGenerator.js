@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, Button, StyleSheet, Text, View, Image } from 'react-native';
+import { Platform, Button, StyleSheet, Text, View, Image, TouchableOpacity, Dimensions } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -8,6 +8,7 @@ import * as FileSystem from 'expo-file-system';
 
 //import DocumentPicker from 'react-native-document-picker';
 
+const windowWidth = Dimensions.get('window').width;
 
 export default class SenderScreen extends React.Component {
   state = {
@@ -28,6 +29,10 @@ export default class SenderScreen extends React.Component {
     if (status !== 'granted') {
       alert('Sorry, we need camera roll permissions to make this work!');
     }
+  }
+
+  componentWillUnmount() {
+    clearInterval(this.qrInterval);
   }
 
   pad(x) {
@@ -65,7 +70,7 @@ export default class SenderScreen extends React.Component {
 		this.sourceBlockNum = totalblocks;
 		this.sendWhichBlock = 0;	
 
-		setInterval( ()=>this.sendOneBlock() , 100);
+		this.qrInterval = setInterval( ()=>this.sendOneBlock() , 100);
 	}
 
 	sendOneBlock(){
@@ -79,44 +84,59 @@ export default class SenderScreen extends React.Component {
   async pickFile(isImage) {
     this.setState({fileLoaded: false});
 
-    let data = null;
+    let data = null, success = false;
     if (isImage) {
       data = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.All
       });
+      success = (data.cancelled === "false");
     } else {
       data = await DocumentPicker.getDocumentAsync();
+      success = (data.type === "success");
     }
 
-    const uri = data.uri;
-    const content = await FileSystem.readAsStringAsync(uri, {encoding: FileSystem.EncodingType.Base64});
-    await this.setState({path: uri, fileData: content, fileLoaded: true, fileExtension: uri.substring(uri.lastIndexOf('.'))})
+    if (success) {
+      const uri = data.uri;
+      const content = await FileSystem.readAsStringAsync(uri, {encoding: FileSystem.EncodingType.Base64});
+      await this.setState({path: uri, fileData: content, fileLoaded: true, fileExtension: uri.substring(uri.lastIndexOf('.'))})
 
-    this.createSourceBlocks();
+      this.createSourceBlocks();
+    }
   }
 
   render() {
 
     return (
-      <View>
-        <Text>Sender Screen</Text>
-        <View style={{justifyContent: 'center', alignItems: 'center'}}>
-          <QRCode value={this.state.qrdata} size={350}/>
+      <View style={{flex: 1, alignItems: 'center'}}>
+        <View style={{marginTop: 20, justifyContent: 'center'}}>
+          <QRCode value={this.state.qrdata} size={windowWidth - 40}/>
         </View>
-        <Button title="Get Image" onPress={() => this.pickFile(true)}/>
-        <Button title="Get File" onPress={() => this.pickFile(false)}/>
-        <Text>{"Status: " + this.state.status}</Text>
-        <Text>{this.state.data ? this.state.data.width + " " + this.state.data.height + " " + this.state.data.uri + " " + this.state.base64: "Lmao" }</Text>
-        {this.state.path && 
-          (<View style={{justifyContent: 'center', alignItems: 'center'}}>
-             <Image 
-              style={{height: 100, width: 100, alignSelf: 'center'}}
-              source={{uri: this.state.path}} 
-            />
-            <Text>image loaded with path {this.state.path}</Text>
-           </View>)
 
-        }
+        <View style={{
+          height: 150, 
+          position: 'absolute', 
+          top: '65%', 
+          width: '90%', 
+          justifyContent: 'space-around',
+          borderWidth: 2,
+          borderRadius: 5,
+          borderColor: '#4d5d6b',
+        }}>
+          <View style={{flex: 1, justifyContent: 'center', alignSelf: 'center'}}>
+            <Text style={{fontFamily: 'Avenir', fontSize: 20}}>Upload...</Text>
+          </View>
+          <View style={{
+            flex: 1, 
+            flexDirection: 'row', 
+            borderTopWidth: 1, 
+            alignItems: 'center', 
+            justifyContent: 'space-around',
+            borderTopColor: '#c2cad1'
+          }}>
+            <Button title="Image" onPress={() => this.pickFile(true)}/>
+            <Button title="File" onPress={() => this.pickFile(false)}/>
+          </View>
+        </View>
       </View>
     );
   }
