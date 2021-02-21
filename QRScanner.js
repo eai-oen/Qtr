@@ -41,9 +41,12 @@ export default class ScannerScreen extends React.Component {
 
   parse = (s) => {
     if(!this.buffers.scanning) {return}
-    var bnumber = parseInt(s.slice(0, 4)); 
-    var total = parseInt(s.slice(4, 8)); 
+    var bnumber = bytes_to_number(s.slice(0, 4)); 
+    var total = bytes_to_number(s.slice(4, 8)); 
+    console.log(bnumber);
+    console.log(total);
     var data = s.slice(8);
+    
     // Init logic
     if(this.buffers.buffer === null) {
       this.setState({
@@ -54,6 +57,7 @@ export default class ScannerScreen extends React.Component {
       this.buffers.ereceived = total;
       this.buffers.buffer = new Array(total).fill(null);
     }
+    
     // Add logic
     if(this.buffers.buffer[bnumber] === null) {
       console.log("Received block " + bnumber + " out of " + total)
@@ -61,14 +65,18 @@ export default class ScannerScreen extends React.Component {
       this.setState({nreceived: this.state.nreceived + 1});
       this.buffers.nreceived++;
     }
-    // End logiec
+    
+    // End logic
     if(this.buffers.nreceived === this.buffers.ereceived){
       console.log("Received all blocks")
       this.setState({scanning: false, loaded: true});
       this.buffers.scanning = false;
       this.buffers.loaded = true;
       
-      this.processFile(this.buffer.join())
+      let extension = Base64.btoa(this.buffers.buffer[0]);
+      console.log("Extension: " + extension);
+      
+      this.processFile(this.buffers.buffer.slice(1).join())
     }
   }
 
