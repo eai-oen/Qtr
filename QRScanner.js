@@ -26,6 +26,13 @@ export default class ScannerScreen extends React.Component {
     cachedFilePath: null,
   }
 
+  decodedSourceBlocks = {
+    length: -1,
+    data: []
+  };
+
+  encodedBlocks = [];
+
   async componentDidMount() {
     const { status } = await BarCodeScanner.requestPermissionsAsync();
     this.setState({hasPermission: status === "granted"});
@@ -113,4 +120,114 @@ export default class ScannerScreen extends React.Component {
       </View>
     )
   }
+}
+
+
+
+/* 
+decodedSourceBlocks = {
+  length: -1
+  data: [ [], [], [], ...  ]
+}
+  the final list of decoded source blocks
+
+encodedBlocks = [ {
+  inds: [12, 32],
+  data: [......]
+}, {}, ... ]
+  the encoded blocks that consists of more than 1 undecoded source blocks
+
+
+function string_to_bytes(str){
+  let res = [];
+  for (var i=0; i<str.length; i++)
+    res.push(str.charCodeAt(i));
+  return res;
+}
+
+*/
+
+
+function updateEncodedBlocks(){
+
+  this.encodedBlocks.forEach((val, ind) => {
+    
+  });
+
+  var n = this.encodedBlocks.length;
+  for (var i=0; i<n; i++){
+    var encB = this.encodedBlocks[i];
+    for (var j=0; j<encB.inds.length; j++){
+
+    }
+  }
+}
+
+function decodeOneBlock(blockData){
+  // asusming blockData is a string
+
+  // get header data
+    // first byte: d
+    // every 8 bytes after that: index of the source block
+  let d = parseInt(blockData[0]);
+  let inds = [];
+  for (var i=0; i<d; i++)
+    inds.push( parseInt(blockData.slice(1+i*8, 1+(i+1)*8)) );
+
+  console.log('ok i read d: ');
+  console.log(d);
+  console.log('and index ');
+  console.log(inds);
+
+  // this is the main data; store it as number in bytes
+  let dataStr = blockData.slice(1+d*8);
+  let data = [];
+  for (var i=0; i<dataStr.length; i++)
+    data.push(dataStr.charCodeAt(i));
+
+
+
+  // see if any of the decode source blocks can
+  // xor away some contents
+  for (var i=0; i<d; i++){
+    if (inds[i] <= this.decodedSourceBlocks.length
+       && this.decodedSourceBlocks.data[inds[i]] != null){
+      var dSB = this.decodedSourceBlocks.data[inds[i]];
+
+      for (var j=0; j<dSB.length; j++)
+        data[j] = dSB[j] ^ data[j];
+
+      inds.splice(i, 1);
+    }
+  }
+
+
+  // add it to the decoded blocks if it only has 1 block left
+  if (inds.length == 1){
+    // x is the current largest index in the decoded blocks
+    var x = this.decodedSourceBlocks.length;
+    if (x < inds[0]){
+      // update the decoded source blocks array up
+      // to inds[0], which is wheere this source block goes
+      for (let i=x+1; i<=inds[0]; i++)
+        this.decodedSourceBlocks.data.push(null);
+      this.decodedSourceBlocks.length = index;
+    }
+
+    this.decodedSourceBlocks.data[index] = content;
+
+    // we run over all the encoded blocks to see if 
+    // there are any old fellas going in the 
+    // decoded source pile
+    updateEncodedBlocks();
+  }
+
+  else if (inds.length > 1){
+    this.encodedBlocks.push({
+        inds: inds,
+        data: data
+    });
+  }
+
+
 }
