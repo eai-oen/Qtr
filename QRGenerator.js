@@ -57,14 +57,13 @@ export default class SenderScreen extends React.Component {
 		let blocks = [];
 		let totalbytes = file_enc.length;
 		let totalblocks = Math.ceil(totalbytes/bytesPerBlock) + 1;
-		let totalblocks_enc = this.pad(totalblocks.toString());
     console.log("Number of blocks: " + totalblocks);
     console.log("Length of file: " + totalbytes);
 
 
 		// the first block encodes the file extension
 		let fileExt = this.state.fileExtension;
-    let block = fileExt + "/" + totalbytes.toString() + "/";
+    let block = fileExt + "+" + totalbytes.toString() + "+";
 		blocks.push(this.padr(block, bytesPerBlock));
 
 		// the rest of the blocks
@@ -88,7 +87,6 @@ export default class SenderScreen extends React.Component {
 
   xorStrings(a, b){
     let s = '';
-  
     // use the longer of the two words to calculate the length of the result
     for (let i = 0; i < Math.max(a.length, b.length); i++) {
       // append the result of the char from the code-point that results from
@@ -121,7 +119,7 @@ export default class SenderScreen extends React.Component {
 	  // construct headers
     // first char: d
     // every 8 char after that: index of the pic
-	  let header = this.pad(this.sourceBlockNum);
+	  let header = this.pad(this.sourceBlockNum.toString());
 	  header += d.toString();
 	  let inds = new Set();
 	  while (inds.size < d){inds.add(Math.floor(Math.random() * this.sourceBlockNum));}
@@ -137,7 +135,8 @@ export default class SenderScreen extends React.Component {
     for (let i = 0; i < d; i++) {
       blocks[i] = this.sourceBlocks[inds[i]];
     }
-    header += blocks.reduce(this.xorStrings);
+    blocks = blocks.reduce(this.xorStrings);
+    header += btoa(blocks);
 
 	  this.setState({ qrdata: header });
 	}
@@ -195,3 +194,52 @@ export default class SenderScreen extends React.Component {
 
 
 
+
+
+const chars =
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+
+function atob (input = ''){
+  let str = input.replace(/[=]+$/, '');
+  let output = '';
+
+  if (str.length % 4 == 1) {
+    throw new Error(
+      "'atob' failed: The string to be decoded is not correctly encoded.",
+    );
+  }
+  for (
+    let bc = 0, bs = 0, buffer, i = 0;
+    (buffer = str.charAt(i++));
+    ~buffer && ((bs = bc % 4 ? bs * 64 + buffer : buffer), bc++ % 4)
+      ? (output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6))))
+      : 0
+  ) {
+    buffer = chars.indexOf(buffer);
+  }
+
+  return output;
+}
+
+function btoa(input = ''){
+  let str = input;
+  let output = '';
+
+  for (
+    let block = 0, charCode, i = 0, map = chars;
+    str.charAt(i | 0) || ((map = '='), i % 1);
+    output += map.charAt(63 & (block >> (8 - (i % 1) * 8)))
+  ) {
+    charCode = str.charCodeAt((i += 3 / 4));
+
+    if (charCode > 0xff) {
+      throw new Error(
+        "'btoa' failed: The string to be encoded contains characters outside of the Latin1 range.",
+      );
+    }
+
+    block = (block << 8) | charCode;
+  }
+
+  return output;
+}

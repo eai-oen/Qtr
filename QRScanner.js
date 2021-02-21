@@ -36,9 +36,12 @@ export default class ScannerScreen extends React.Component {
 
   finalize(){
     this.scanning = false;
+    // this.decodedSourceBlocks = this.decodedSourceBlocks.map(atob);
+
     let hold = this.decodedSourceBlocks[0].split("+");
+    console.log(hold.slice(0, 2));
     let extension = hold[0];
-    let numbytes = hold[1];
+    let numbytes = parseInt(hold[1]);
     let buffer = this.decodedSourceBlocks.slice(1).join("");
     for(let b of this.decodedSourceBlocks) {
       console.log(b.length);
@@ -47,11 +50,13 @@ export default class ScannerScreen extends React.Component {
     console.log("RECV length: " + buffer.length);
     console.log("EXPD length: " + numbytes);
     console.log("EXT: " + extension);
-    for(let i=0; i < buffer.length; i++){
-      if(buffer.charCodeAt(i) >= 64){
-        console.log("ERROR");
-      }
-    }
+    // let asdf = Array.from("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=");
+    // for(let i=0; i < buffer.length; i++){
+    //   if(!(buffer.charCodeAt(i) in asdf)){
+    //     console.log("ERROR");
+    //   }
+    // }
+    console.log("Parsed");
     this.processFile(buffer, extension);
   }
 
@@ -72,6 +77,7 @@ export default class ScannerScreen extends React.Component {
   
     // this is the main data; store it as number in bytes
     let dataStr = blockData.slice(9+d*8);
+    dataStr = atob(dataStr);
   
     this.encodedBlocks.push({
       xord: inds,
@@ -102,15 +108,15 @@ export default class ScannerScreen extends React.Component {
         let ind = Array.from(encB.xord.values())[0];
         console.log("decoded block num " + ind);
         this.encodedBlocks.splice(encidx, 1);
-        if (this.decodedSourceBlocks[ind]!==null){
-          continue;
+        if (this.decodedSourceBlocks[ind]===null){
+          // ind is the ssource block index we want to add to  
+
+          runAgain = true;
+          this.decodedSourceBlocks[ind] = encB.data;
+          this.blocksDecoded++;
+          console.log("Decoded so far: " + this.blocksDecoded);
         }
 
-        // ind is the ssource block index we want to add to  
-        runAgain = true;
-        this.decodedSourceBlocks[ind] = encB.data;
-        this.blocksDecoded++;
-        console.log("Decoded so far: " + this.blocksDecoded);
       }
     }
   
@@ -136,55 +142,54 @@ export default class ScannerScreen extends React.Component {
     return s;
   }
 
-
   async componentDidMount() {
     const { status } = await BarCodeScanner.requestPermissionsAsync();
     this.setState({hasPermission: status === "granted"});
   }
 
-  parse = (s) => {
-    if(!this.buffers.scanning) {return}
-    let bnumber = parseInt(s.slice(0, 8)); 
-    let total = parseInt(s.slice(8, 16)); 
-    let data = s.slice(16);
+  // parse = (s) => {
+  //   if(!this.buffers.scanning) {return}
+  //   let bnumber = parseInt(s.slice(0, 8)); 
+  //   let total = parseInt(s.slice(8, 16)); 
+  //   let data = s.slice(16);
     
-    // Init logic
-    if(this.buffers.buffer === null) {
-      this.setState({
-        nreceived: 0, 
-        ereceived: total, 
-      });
-      this.buffers.nreceived = 0;
-      this.buffers.ereceived = total;
-      this.buffers.buffer = new Array(total).fill(null);
-    }
+  //   // Init logic
+  //   if(this.buffers.buffer === null) {
+  //     this.setState({
+  //       nreceived: 0, 
+  //       ereceived: total, 
+  //     });
+  //     this.buffers.nreceived = 0;
+  //     this.buffers.ereceived = total;
+  //     this.buffers.buffer = new Array(total).fill(null);
+  //   }
     
-    // Add logic
-    if(this.buffers.buffer[bnumber] === null) {
-      console.log("Received block " + bnumber + " out of " + total)
-      this.buffers.buffer[bnumber] = data;
-      this.setState({nreceived: this.state.nreceived + 1});
-      this.buffers.nreceived++;
-      if(bnumber === 0) {
-        this.setState({extension: data});
-        this.buffers.extension = data;
-      }
-    }
+  //   // Add logic
+  //   if(this.buffers.buffer[bnumber] === null) {
+  //     console.log("Received block " + bnumber + " out of " + total)
+  //     this.buffers.buffer[bnumber] = data;
+  //     this.setState({nreceived: this.state.nreceived + 1});
+  //     this.buffers.nreceived++;
+  //     if(bnumber === 0) {
+  //       this.setState({extension: data});
+  //       this.buffers.extension = data;
+  //     }
+  //   }
     
-    // End logic
-    if(this.buffers.nreceived === this.buffers.ereceived){
-      console.log("Received all blocks")
-      this.setState({scanning: false, loaded: true});
-      this.buffers.scanning = false;
-      this.buffers.loaded = true;
+  //   // End logic
+  //   if(this.buffers.nreceived === this.buffers.ereceived){
+  //     console.log("Received all blocks")
+  //     this.setState({scanning: false, loaded: true});
+  //     this.buffers.scanning = false;
+  //     this.buffers.loaded = true;
       
-      let extension = this.buffers.buffer[0];
-      console.log("Extension: " + extension);
-      let hold = this.buffers.buffer.slice(1).join();
-      console.log("Received length: " + hold.length);
-      this.processFile(hold, extension);
-    }
-  }
+  //     let extension = this.buffers.buffer[0];
+  //     console.log("Extension: " + extension);
+  //     let hold = this.buffers.buffer.slice(1).join();
+  //     console.log("Received length: " + hold.length);
+  //     this.processFile(hold, extension);
+  //   }
+  // }
 
   qrscanned = (result) => {
     if(!this.scanning){
@@ -260,3 +265,52 @@ function string_to_bytes(str){
 // goes through the encodedBlocks and
 // checks to see if we can
 // resolve any to the decodedSourceBlocks
+
+
+const chars =
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+
+function atob (input = ''){
+  let str = input.replace(/[=]+$/, '');
+  let output = '';
+
+  if (str.length % 4 == 1) {
+    throw new Error(
+      "'atob' failed: The string to be decoded is not correctly encoded.",
+    );
+  }
+  for (
+    let bc = 0, bs = 0, buffer, i = 0;
+    (buffer = str.charAt(i++));
+    ~buffer && ((bs = bc % 4 ? bs * 64 + buffer : buffer), bc++ % 4)
+      ? (output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6))))
+      : 0
+  ) {
+    buffer = chars.indexOf(buffer);
+  }
+
+  return output;
+}
+
+function btoa(input = ''){
+  let str = input;
+  let output = '';
+
+  for (
+    let block = 0, charCode, i = 0, map = chars;
+    str.charAt(i | 0) || ((map = '='), i % 1);
+    output += map.charAt(63 & (block >> (8 - (i % 1) * 8)))
+  ) {
+    charCode = str.charCodeAt((i += 3 / 4));
+
+    if (charCode > 0xff) {
+      throw new Error(
+        "'btoa' failed: The string to be encoded contains characters outside of the Latin1 range.",
+      );
+    }
+
+    block = (block << 8) | charCode;
+  }
+
+  return output;
+}
