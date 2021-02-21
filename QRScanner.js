@@ -1,6 +1,9 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { BarCodeScanner } from 'expo-barcode-scanner';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
+import * as Sharing from 'expo-sharing';
 
 
 export default class ScannerScreen extends React.Component {
@@ -18,6 +21,7 @@ export default class ScannerScreen extends React.Component {
     loaded: false,
     nreceived: null,    // number of blocks received
     ereceived: null,    // number of blocks expected
+    cachedFilePath: null,
   }
 
   async componentDidMount() {
@@ -53,6 +57,8 @@ export default class ScannerScreen extends React.Component {
       this.setState({scanning: false, loaded: true});
       this.buffers.scanning = false;
       this.buffers.loaded = true;
+      
+      this.processImage(this.buffer.join())
     }
 
   }
@@ -60,6 +66,18 @@ export default class ScannerScreen extends React.Component {
   qrscanned = ({ type, data }) => {
     this.parse(data);
     this.setState((state) => ({scanned: state.scanned + 1}));
+  }
+  
+  async saveImage() {
+    await MediaLibrary.saveToLibraryAsync(this.state.filepath);
+  }
+
+  async processImage(base64string, fileExtension) {
+    const filepath = FileSystem.cacheDirectory + "qtr_file" + fileExtension;
+    await FileSystem.writeAsStringAsync(filepath, base64string, {encoding: FileSystem.EncodingType.Base64});
+    this.setState({cachedFilePath: filepath});
+
+    Sharing.shareAsync(filepath);
   }
 
   render() {
