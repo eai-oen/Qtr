@@ -121,3 +121,121 @@ export default class SenderScreen extends React.Component {
     );
   }
 }
+
+
+
+
+function soliton_distribution(i, k){
+  if (i == 1) return 1/k;
+  return 1/i*(i-1);
+}
+
+function sendOneEncodedBlock(sourceBlocks){
+
+  // k is the maximum number of source blocks a block could have
+  let k = 5; 
+
+  // d is the number of source blocks this encoded block should contain
+  // it shuold be randomly assigned according to the solition distribution
+  let d = Math.random();
+  for (var i=1; i<=k; i++){
+    if (d < solition_distribution(i, k)){
+      d = i;
+      break;
+    }
+  }
+
+  let n = sourceBlocks.length;  // the total number of source Blocks
+  
+  // construct headers
+    // first byte: d
+    // every 4 bytes after that: index of the pic
+  let header = number_to_bytes(d, 1);
+  let inds = [];
+  for (var i=0; i<d; i++){
+    let ind = Math.floor(Math.random() * n);
+    inds.push(ind);
+    header.concat(number_to_bytes(ind));
+  }
+
+
+  // xor d source blocks together
+  
+  let data = []
+  for (var i=0; i<d; i++){
+    let ind = inds[i];
+    for (var j=0; j<sourceBlocks[ind].length; j++){
+      if (data[j] == undefined) data[j] = 0;
+      data[j] = data[j] ^ sourceBlocks[ind][j];
+    }
+  }
+
+  header.concat(data);
+
+  return header;
+  //this.setState({qrdata: header});
+}
+
+
+
+
+/* 
+decodedSourceBlocks = {
+  length: -1
+  data: [ [], [], [], ...  ]
+}
+  the final list of decoded source blocks
+
+encodedBlocks = [ {
+  inds: [12, 32],
+  data: [......]
+}, {}, ... ]
+  the encoded blocks that consists of more than 1 undecoded source blocks
+*/
+
+
+function string_to_bytes(str){
+  let res = [];
+  for (var i=0; i<str.length; i++)
+    res.push(str.charCodeAt(i));
+  return res;
+}
+
+function decodeOneBlock(blockData){
+  // asusming blockData is a string
+
+  // get header data
+    // first byte: d
+    // every 4 bytes after that: index of the source block
+  let d = blockData.charCodeAt(0);
+  let inds = [];
+  for (var i=0; i<d; i++){
+    inds.push( bytes_to_number(string_to_bytes(
+      blockData.substring(1+i*4, 1+(i+1)*4)
+    )) );
+  }
+
+  // see if any of the decode source blocks can
+  // xor away some contents
+  for (var i=0; i<d; i++){
+    if (inds[i] <= this.decodedSourceBlocks.length
+       && this.decodedSourceBlocks.data[inds[i]] != null){
+      inds.splice(i, 1);
+    }
+  }
+
+  // add it to the decoded blocks if it only has 1 block left
+  if (inds.length == 1){
+    // x is the current largest index in the decoded blocks
+    var x = this.decodedSourceBlocks.length;
+    if (x < inds[0]){
+      // update the decoded source blocks array up
+      // to inds[0], which is wheere this source block goes
+      for (let i=x+1; i<=inds[0]; i++)
+        this.decodedSourceBlocks.data.push(null);
+      this.decodedSourceBlocks.length = index;
+    }
+
+    this.decodedSourceBlocks.data[index] = content;
+  }
+}
