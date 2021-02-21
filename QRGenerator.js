@@ -18,29 +18,16 @@ export default class SenderScreen extends React.Component {
     qrdata: "initial",
     path: null,  
   };
-
  
   sendWhichBlock = -1;
   sourceBlocks = null;
   sourceBlockNum = -1;
-
-  pad(num, size) {
-    num = num.toString();
-    while (num.length < size) num = "0" + num;
-    return num;
-  }
-
 
   async componentDidMount() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       alert('Sorry, we need camera roll permissions to make this work!');
     }
-    setInterval(() => { this.setState(
-      (state) => ({
-        message: this.pad(state.blockno, 2) + "30asdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsfasdfasdfasdfasdfadsf",
-        blockno: state.blockno == 30 ? 0 : state.blockno + 1,
-    })) }, 100)
   }
 
   // the bytes are read right to left
@@ -54,25 +41,20 @@ export default class SenderScreen extends React.Component {
   }
 
 	createSourceBlocks(){
-
-		console.log("creating source blocks");
-
 		if (this.state.fileLoaded == false) return null;
 
 		// header: 4 bytes for block index, 4 bytes for total # of blocks
 		// content: 2000 bytes
-		let bytesPerBlock = 1500;	
+		let bytesPerBlock = 30;	
 		let data = Base64.atob(this.state.fileData);
 
 		let blocks = [];
 		let n = data.length;
-		let m = Math.ceil(n/bytesPerBlock);
+		let m = Math.ceil(n/bytesPerBlock) + 1;
+    m = 10;
 		let mb8 = this.number_to_bytes(m);
+    console.log("Number of blocks: " + n);
 
-		console.log("vars");
-		console.log(mb8);
-		console.log(m);
-		console.log(n);
 
 		// the first 0/m block encodes the file extension
 		var fileExt = this.state.fileExtension;
@@ -81,14 +63,14 @@ export default class SenderScreen extends React.Component {
 			block.push(fileExt.charCodeAt(i));
 		blocks.push(block);
 
-		console.log("first block only");
-		console.log(blocks);
-
 		// the rest of the blocks
-		for (var i=0; i<m; i++){
+		for (var i = 1; i < m; i++){
 			block = this.number_to_bytes(i).concat(mb8);
-			for (var j=0; j<bytesPerBlock && i+j<n; j++)
-				block.push(data.charCodeAt(i+j));
+      if (i == 0){
+        console.log(block.length);
+      } 
+			for (var j=0; j<bytesPerBlock && (i * bytesPerBlock) + j < n; j++)
+				block.push(data.charCodeAt((i * bytesPerBlock) + j));
 			blocks.push(block);
 		}
 
@@ -96,17 +78,13 @@ export default class SenderScreen extends React.Component {
 		this.sourceBlockNum = m;
 		this.sendWhichBlock = 0;	
 
-		setInterval( ()=>this.sendOneBlock() , 1000);
+		setInterval( ()=>this.sendOneBlock() , 600);
 	}
 
 
 	sendOneBlock(){
-		console.log("sending this");
-		console.log(this.sendWhichBlock);
-
-
 		var index = this.sendWhichBlock;
-		console.log(this.sourceBlocks[index]);
+    // console.log(index);
 
 		this.setState({
 			qrdata: {
@@ -137,7 +115,6 @@ export default class SenderScreen extends React.Component {
     const content = await FileSystem.readAsStringAsync(uri, {encoding: FileSystem.EncodingType.Base64});
     await this.setState({path: uri, fileData: content, fileLoaded: true, fileExtension: uri.substring(uri.lastIndexOf('.'))})
 
-    console.log(this.state.fileData.substring(0,100));
     this.createSourceBlocks();
   }
 

@@ -25,12 +25,15 @@ export default class ScannerScreen extends React.Component {
   }
 
 
-  bytes_to_number(arr){
-  	var p2 = 1, res = 0;
-  	arr.forEach((val, ind) => {
-  		res += p2 * val;
-  		p2 *= 256;
-  	});
+  bytes_to_number(bytes){
+    console.log("GOT HERE");
+    console.log("Received string of length " + bytes.length);
+  	let p2 = 1, res = 0;
+    for(let ind = 0; ind < bytes.length; ind++){
+      console.log(bytes.charCodeAt(ind));
+      res += p2 * bytes.charCodeAt(ind);
+      p2 *= 256;
+    }
   	return res;
   }
 
@@ -41,11 +44,12 @@ export default class ScannerScreen extends React.Component {
 
   parse = (s) => {
     if(!this.buffers.scanning) {return}
-    var bnumber = bytes_to_number(s.slice(0, 4)); 
-    var total = bytes_to_number(s.slice(4, 8)); 
-    console.log(bnumber);
-    console.log(total);
-    var data = s.slice(8);
+    console.log("SCANNED STRING LENGTH " + s.length + " WITH TYPE " + typeof(s));
+    let bnumber = this.bytes_to_number(s.slice(0, 4)); 
+    let total = this.bytes_to_number(s.slice(4, 8)); 
+    console.log("Block Number: " + bnumber);
+    console.log("Total Blocks: " + total);
+    let data = s.slice(8);
     
     // Init logic
     if(this.buffers.buffer === null) {
@@ -80,8 +84,9 @@ export default class ScannerScreen extends React.Component {
     }
   }
 
-  qrscanned = ({ type, data }) => {
-    this.parse(data);
+  qrscanned = (result) => {
+    console.log(result);
+    this.parse(result.data);
     this.setState((state) => ({scanned: state.scanned + 1}));
   }
   
@@ -119,3 +124,44 @@ export default class ScannerScreen extends React.Component {
 }
 
 
+const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+const Base64 = {
+  btoa: (input = '')  => {
+    let str = input;
+    let output = '';
+
+    for (let block = 0, charCode, i = 0, map = chars;
+    str.charAt(i | 0) || (map = '=', i % 1);
+    output += map.charAt(63 & block >> 8 - i % 1 * 8)) {
+
+      charCode = str.charCodeAt(i += 3/4);
+
+      if (charCode > 0xFF) {
+        throw new Error("'btoa' failed: The string to be encoded contains characters outside of the Latin1 range.");
+      }
+      
+      block = block << 8 | charCode;
+    }
+    
+    return output;
+  },
+
+  atob: (input = '') => {
+    let str = input.replace(/=+$/, '');
+    let output = '';
+
+    if (str.length % 4 == 1) {
+      throw new Error("'atob' failed: The string to be decoded is not correctly encoded.");
+    }
+    for (let bc = 0, bs = 0, buffer, i = 0;
+      buffer = str.charAt(i++);
+
+      ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer,
+        bc++ % 4) ? output += String.fromCharCode(255 & bs >> (-2 * bc & 6)) : 0
+    ) {
+      buffer = chars.indexOf(buffer);
+    }
+
+    return output;
+  }
+};
