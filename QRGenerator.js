@@ -24,14 +24,11 @@ export default class SenderScreen extends React.Component {
   sourceBlocks = null;
   sourceBlockNum = -1;
 
-
-  bytes_to_number(arr){
-  	var p2 = 1, res = 0;
-  	arr.forEach((val, ind) => {
-  		res += p2 * val;
-  		p2 *= 256;
-  	});
-  	return res;
+  async componentDidMount() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      alert('Sorry, we need camera roll permissions to make this work!');
+    }
   }
 
   // the bytes are read right to left
@@ -52,13 +49,13 @@ export default class SenderScreen extends React.Component {
 
 		// header: 4 bytes for block index, 4 bytes for total # of blocks
 		// content: 2000 bytes
-		let bytesPerBlock = 2000;	
-		var data = atob(this.state.fileData);
+		let bytesPerBlock = 1500;	
+		let data = Base64.atob(this.state.fileData);
 
-		var blocks = [];
-		var n = data.length;
-		var m = Math.ceil(n/bytesPerBlock);
-		var mb8 = this.number_to_bytes(m);
+		let blocks = [];
+		let n = data.length;
+		let m = Math.ceil(n/bytesPerBlock);
+		let mb8 = this.number_to_bytes(m);
 
 		console.log("vars");
 		console.log(mb8);
@@ -109,87 +106,45 @@ export default class SenderScreen extends React.Component {
 		this.sendWhichBlock = (index + 1) % this.sourceBlockNum;
 	}
 
-  async getFile() {
-    const result = await DocumentPicker.getDocumentAsync();
-    this.setState({data: result});
-    console.log(result);
-
-
-  }
-
-  async componentDidMount() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      alert('Sorry, we need camera roll permissions to make this work!');
-    }
-  }
-
-  async getImage() {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      quality: 1,
-      base64: true,
-    });
-    console.log("got the file");
-    this.setState({fileData: result.base64});
-    this.createSourceBlocks();
-  }
-  async pickImage() {
+  
+  // activates Document/Image picker and stores file content
+  // into state.fileData with base64 encoding
+  async pickFile(isImage) {
     this.setState({fileLoaded: false});
-    // const { uri, base64 } = await ImagePicker.launchImageLibraryAsync({
-    //   mediaTypes: ImagePicker.MediaTypeOptions.All,
-    //   base64: true,
-    // });
 
-    const { uri } = await DocumentPicker.getDocumentAsync();
-    let base65 = await FileSystem.readAsStringAsync(uri, {encoding: FileSystem.EncodingType.Base64});
+    let data = null;
+    if (isImage) {
+      data = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All
+      });
+    } else {
+      data = await DocumentPicker.getDocumentAsync();
+    }
 
-    // this.setState({
-    //   fileLoaded: true,
-    //   fileData: base64,
-    //   fileExtension: uri.substring(uri.lastIndexOf('.')),
-    // });
+    const uri = data.uri;
+    const content = await FileSystem.readAsStringAsync(uri, {encoding: FileSystem.EncodingType.Base64});
+    await this.setState({path: uri, fileData: content, fileLoaded: true, fileExtension: uri.substring(uri.lastIndexOf('.'))})
 
-    let filepath = FileSystem.cacheDirectory + "qrt_file" + uri.substring(uri.lastIndexOf('.'));
-    await FileSystem.writeAsStringAsync(filepath, base65, {encoding: FileSystem.EncodingType.Base64});
-    this.setState({path: filepath});
-    // let filepath2 = await FileSystem.getContentUriAsync(filepath)
-
-    // this.setState({cachedFilePath: filepath});
-    await Sharing.shareAsync(filepath);
-    //this.setState({dd: "im done"});
+    console.log(this.state.fileData.substring(0,100));
+    this.createSourceBlocks();
   }
 
   render() {
 
-  	console.log(this.state.qrdata);
-
     return (
       <View>
         <Text>Sender Screen</Text>
-        
-
-        <QRCode
-              value={
-              	[this.state.qrdata]
-              }
-              size={400}
-         />
-
-        <Button
-          title="Get Image"
-          onPress={() => this.pickImage()}
-        />
-        <Button
-          title="Get File"
-          onPress={() => this.getFile()}
-        />
+        <View style={{justifyContent: 'center', alignItems: 'center'}}>
+          <QRCode value={[this.state.qrdata]} size={350}/>
+        </View>
+        <Button title="Get Image" onPress={() => this.pickFile(true)}/>
+        <Button title="Get File" onPress={() => this.pickFile(false)}/>
         <Text>{"Status: " + this.state.status}</Text>
         <Text>{this.state.data ? this.state.data.width + " " + this.state.data.height + " " + this.state.data.uri + " " + this.state.base64: "Lmao" }</Text>
         {this.state.path && 
-          (<View>
+          (<View style={{justifyContent: 'center', alignItems: 'center'}}>
              <Image 
-              style={{height: 100, width: 100}}
+              style={{height: 100, width: 100, alignSelf: 'center'}}
               source={{uri: this.state.path}} 
             />
             <Text>image loaded with path {this.state.path}</Text>
@@ -201,8 +156,44 @@ export default class SenderScreen extends React.Component {
   }
 }
 
+const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+const Base64 = {
+  btoa: (input = '')  => {
+    let str = input;
+    let output = '';
 
+    for (let block = 0, charCode, i = 0, map = chars;
+    str.charAt(i | 0) || (map = '=', i % 1);
+    output += map.charAt(63 & block >> 8 - i % 1 * 8)) {
 
+      charCode = str.charCodeAt(i += 3/4);
 
+      if (charCode > 0xFF) {
+        throw new Error("'btoa' failed: The string to be encoded contains characters outside of the Latin1 range.");
+      }
+      
+      block = block << 8 | charCode;
+    }
+    
+    return output;
+  },
 
+  atob: (input = '') => {
+    let str = input.replace(/=+$/, '');
+    let output = '';
 
+    if (str.length % 4 == 1) {
+      throw new Error("'atob' failed: The string to be decoded is not correctly encoded.");
+    }
+    for (let bc = 0, bs = 0, buffer, i = 0;
+      buffer = str.charAt(i++);
+
+      ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer,
+        bc++ % 4) ? output += String.fromCharCode(255 & bs >> (-2 * bc & 6)) : 0
+    ) {
+      buffer = chars.indexOf(buffer);
+    }
+
+    return output;
+  }
+};

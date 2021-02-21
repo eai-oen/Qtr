@@ -13,6 +13,16 @@ export default class ScannerScreen extends React.Component {
     cachedFilePath: null,
   }
 
+
+  bytes_to_number(arr){
+  	var p2 = 1, res = 0;
+  	arr.forEach((val, ind) => {
+  		res += p2 * val;
+  		p2 *= 256;
+  	});
+  	return res;
+  }
+
   async componentDidMount() {
     const { status } = await BarCodeScanner.requestPermissionsAsync();
     this.setState({hasPermission: status === "granted"});
