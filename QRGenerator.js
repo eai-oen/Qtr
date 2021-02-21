@@ -40,6 +40,19 @@ export default class SenderScreen extends React.Component {
     return x;
   }
 
+  padr(x, target) {
+    if (x.length != target) {
+      let difference = target - x.length;
+      x += "0".repeat(difference);
+    }
+    return x
+  }
+
+  soliton_distribution(i, k){
+    if (i == 1) return 1 / k;
+    return 1 / (i * (i - 1));
+  }
+
 	createSourceBlocks(){
 		if (this.state.fileLoaded == false) return null;
 
@@ -49,21 +62,17 @@ export default class SenderScreen extends React.Component {
 		let blocks = [];
 		let totalbytes = file_enc.length;
 		let totalblocks = Math.ceil(totalbytes/bytesPerBlock) + 1;
-		let totalblocks_enc = this.pad(totalblocks.toString());
-    console.log("Number of blocks: " + totalblocks);
-    console.log("Length of file: " + totalbytes);
 
 
 		// the first block encodes the file extension
 		let fileExt = this.state.fileExtension;
-    let block = this.pad("0") + totalblocks_enc + fileExt;
-		blocks.push(block);
+    let block = fileExt + "+" + totalbytes.toString() + "+";
+		blocks.push(this.padr(block, bytesPerBlock));
 
 		// the rest of the blocks
 		for (let i = 1; i < totalblocks; i++){
-			block = this.pad(i.toString()) + totalblocks_enc;
-      block += file_enc.slice((i - 1) * bytesPerBlock, i * bytesPerBlock);
-			blocks.push(block);
+      block = file_enc.slice((i - 1) * bytesPerBlock, i * bytesPerBlock);
+			blocks.push(this.padr(block, bytesPerBlock));
 		}
 
 		this.sourceBlocks = blocks;
@@ -73,11 +82,62 @@ export default class SenderScreen extends React.Component {
 		this.qrInterval = setInterval( ()=>this.sendOneBlock() , 100);
 	}
 
-	sendOneBlock(){
-		var index = this.sendWhichBlock;
-		this.setState({ qrdata: this.sourceBlocks[index]});
-		this.sendWhichBlock = (index + 1) % this.sourceBlockNum;
+
+  xorStrings(a, b){
+    let s = '';
+    // use the longer of the two words to calculate the length of the result
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+      // append the result of the char from the code-point that results from
+      // XORing the char codes (or 0 if one string is too short)
+      s += String.fromCharCode(
+        (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0)
+      );
+    }
+  
+    return s;
+  }
+
+	sendOneEncodedBlock(){
+	  // k is the maximum number of source blocks a block could have
+	  let k = 5; 
+
+	  // d is the number of source blocks this encoded block should contain
+	  // it shuold be randomly assigned according to the solition distribution
+	  let sample = Math.random();
+	  let cdf = 0;
+    let d = null;
+	  for (let i=1; i<=k; i++){
+	  	cdf += this.soliton_distribution(i, k);
+	    if (sample < cdf || i == k){
+	      d = i;
+	      break;
+	    }
+	  }
+
+	  // construct headers
+    // first char: d
+    // every 8 char after that: index of the pic
+	  let header = this.pad(this.sourceBlockNum.toString());
+	  header += d.toString();
+	  let inds = new Set();
+	  while (inds.size < d){inds.add(Math.floor(Math.random() * this.sourceBlockNum));}
+    inds = Array.from(inds.keys());
+    for (let idx of inds) {
+      header += this.pad(idx.toString());
+    } 
+
+	  // xor d source blocks together	  
+	  let blocks = new Array(d).fill(null);
+    for (let i = 0; i < d; i++) {
+      blocks[i] = this.sourceBlocks[inds[i]];
+    }
+    blocks = blocks.reduce(this.xorStrings);
+    header += btoa(blocks);
+
+	  this.setState({ qrdata: header });
 	}
+
+
   
   // activates Document/Image picker and stores file content
   // into state.fileData with base64 encoding
@@ -141,3 +201,57 @@ export default class SenderScreen extends React.Component {
     );
   }
 }
+
+
+
+const chars =
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+
+function atob (input = ''){
+  let str = input.replace(/[=]+$/, '');
+  let output = '';
+
+  if (str.length % 4 == 1) {
+    throw new Error(
+      "'atob' failed: The string to be decoded is not correctly encoded.",
+    );
+  }
+  for (
+    let bc = 0, bs = 0, buffer, i = 0;
+    (buffer = str.charAt(i++));
+    ~buffer && ((bs = bc % 4 ? bs * 64 + buffer : buffer), bc++ % 4)
+      ? (output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6))))
+      : 0
+  ) {
+    buffer = chars.indexOf(buffer);
+  }
+
+  return output;
+}
+
+function btoa(input = ''){
+  let str = input;
+  let output = '';
+
+  for (
+    let block = 0, charCode, i = 0, map = chars;
+    str.charAt(i | 0) || ((map = '='), i % 1);
+    output += map.charAt(63 & (block >> (8 - (i % 1) * 8)))
+  ) {
+    charCode = str.charCodeAt((i += 3 / 4));
+
+    if (charCode > 0xff) {
+      throw new Error(
+        "'btoa' failed: The string to be encoded contains characters outside of the Latin1 range.",
+      );
+    }
+
+    block = (block << 8) | charCode;
+  }
+
+  return output;
+}
+
+
+
+

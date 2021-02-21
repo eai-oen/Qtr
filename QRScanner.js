@@ -4,18 +4,9 @@ import { BarCodeScanner } from 'expo-barcode-scanner';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
-import { enableScreens } from 'react-native-screens';
 
 
 export default class ScannerScreen extends React.Component {
-  buffers = {
-    buffer: null,       // Bytes buffer
-    scanning: true,
-    loaded: false,
-    nreceived: 0,       // Bytes buffer
-    ereceived: "???",       // Bytes buffer
-    extension: "???",
-  }
   state = {
     hasPermission: null,
     scanned: 0,
@@ -27,57 +18,124 @@ export default class ScannerScreen extends React.Component {
     cachedFilePath: null,
   }
 
+  decodedSourceBlocks = null;
+  encodedBlocks = [];
+  sourceBlockNum = null;
+  blocksDecoded = 0;
+  prevrece = null;
+  scanning = true;
+
+  finalize(){
+    this.scanning = false;
+    let hold = this.decodedSourceBlocks[0].split("+");
+    let extension = hold[0];
+    let numbytes = parseInt(hold[1]);
+    let buffer = this.decodedSourceBlocks.slice(1).join("");
+    buffer = buffer.slice(0, numbytes);
+    console.log("RECV length: " + buffer.length);
+    console.log("EXPD length: " + numbytes);
+    console.log("EXT: " + extension);
+    this.processFile(buffer, extension);
+  }
+
+  decodeOneBlock(blockData){
+    // asusming blockData is a string
+  
+    // get header data
+    // first byte: d
+    // every 8 bytes after that: index of the source block
+    if(this.sourceBlockNum === null){
+      this.sourceBlockNum = parseInt(blockData.slice(0, 8));
+      this.setState({ereceived: this.sourceBlockNum});
+      this.decodedSourceBlocks = new Array(this.sourceBlockNum).fill(null);
+    }
+    let d = parseInt(blockData[8]);
+    let inds = new Set();
+    for (var i=0; i<d; i++)
+      inds.add( parseInt(blockData.slice(9+i*8, 17+i*8)) );
+  
+    // this is the main data; store it as number in bytes
+    let dataStr = blockData.slice(9+d*8);
+    dataStr = atob(dataStr);
+  
+    this.encodedBlocks.push({
+      xord: inds,
+      data: dataStr
+    });
+    this.updateEncodedBlocks();
+    if(this.blocksDecoded == this.sourceBlockNum) {
+      this.finalize();
+    }
+  }
+
+  updateEncodedBlocks(){
+    let runAgain = false;
+    for(let encidx = this.encodedBlocks.length - 1; encidx >= 0; encidx--){
+      let encB = this.encodedBlocks[encidx]
+      let removal = [];
+      for(let idx of encB.xord.values()) {
+        if (this.decodedSourceBlocks[idx] != null){ // if one of the indices is solved
+          encB.data = this.xorStrings(this.decodedSourceBlocks[idx], encB.data); // xor this shit out
+          removal.push(idx); // delete this index
+        }
+      }
+      for(let hold of removal) { encB.xord.delete(hold); } // remove designated items from xored set
+  
+      // if all but 1 is xor'd out, we move it to decoded
+      if (encB.xord.size === 1){
+        // delete it from encoded
+        let ind = Array.from(encB.xord.values())[0];
+        console.log("decoded block num " + ind);
+        this.encodedBlocks.splice(encidx, 1);
+        if (this.decodedSourceBlocks[ind]===null){
+          // ind is the ssource block index we want to add to  
+
+          runAgain = true;
+          this.decodedSourceBlocks[ind] = encB.data;
+          this.blocksDecoded++;
+          this.setState({nreceived: this.blocksDecoded});
+          console.log("Decoded so far: " + this.blocksDecoded);
+        }
+
+      }
+    }
+  
+    // if there are new blocks added to source
+    // we should check the encoded blocks again
+    if (runAgain){
+      this.updateEncodedBlocks();
+    }
+  }
+
+  xorStrings(a, b){
+    let s = '';
+  
+    // use the longer of the two words to calculate the length of the result
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+      // append the result of the char from the code-point that results from
+      // XORing the char codes (or 0 if one string is too short)
+      s += String.fromCharCode(
+        (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0)
+      );
+    }
+  
+    return s;
+  }
+
   async componentDidMount() {
     const { status } = await BarCodeScanner.requestPermissionsAsync();
     this.setState({hasPermission: status === "granted"});
   }
 
-  parse = (s) => {
-    if(!this.buffers.scanning) {return}
-    let bnumber = parseInt(s.slice(0, 8)); 
-    let total = parseInt(s.slice(8, 16)); 
-    let data = s.slice(16);
-    
-    // Init logic
-    if(this.buffers.buffer === null) {
-      this.setState({
-        nreceived: 0, 
-        ereceived: total, 
-      });
-      this.buffers.nreceived = 0;
-      this.buffers.ereceived = total;
-      this.buffers.buffer = new Array(total).fill(null);
-    }
-    
-    // Add logic
-    if(this.buffers.buffer[bnumber] === null) {
-      console.log("Received block " + bnumber + " out of " + total)
-      this.buffers.buffer[bnumber] = data;
-      this.setState({nreceived: this.state.nreceived + 1});
-      this.buffers.nreceived++;
-      if(bnumber === 0) {
-        this.setState({extension: data});
-        this.buffers.extension = data;
-      }
-    }
-    
-    // End logic
-    if(this.buffers.nreceived === this.buffers.ereceived){
-      console.log("Received all blocks")
-      this.setState({scanning: false, loaded: true});
-      this.buffers.scanning = false;
-      this.buffers.loaded = true;
-      
-      let extension = this.buffers.buffer[0];
-      console.log("Extension: " + extension);
-      let hold = this.buffers.buffer.slice(1).join();
-      console.log("Received length: " + hold.length);
-      this.processFile(hold, extension);
-    }
-  }
-
   qrscanned = (result) => {
-    this.parse(result.data);
+    if(!this.scanning){
+      return;
+    }
+    if(this.prevrece !== result.data) {
+      this.decodeOneBlock(result.data);
+      this.prevrece = result.data;
+    }
+    
     this.setState((state) => ({scanned: state.scanned + 1}));
   }
   
@@ -125,4 +183,53 @@ export default class ScannerScreen extends React.Component {
       </View>
     )
   }
+}
+
+
+const chars =
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+
+function atob (input = ''){
+  let str = input.replace(/[=]+$/, '');
+  let output = '';
+
+  if (str.length % 4 == 1) {
+    throw new Error(
+      "'atob' failed: The string to be decoded is not correctly encoded.",
+    );
+  }
+  for (
+    let bc = 0, bs = 0, buffer, i = 0;
+    (buffer = str.charAt(i++));
+    ~buffer && ((bs = bc % 4 ? bs * 64 + buffer : buffer), bc++ % 4)
+      ? (output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6))))
+      : 0
+  ) {
+    buffer = chars.indexOf(buffer);
+  }
+
+  return output;
+}
+
+function btoa(input = ''){
+  let str = input;
+  let output = '';
+
+  for (
+    let block = 0, charCode, i = 0, map = chars;
+    str.charAt(i | 0) || ((map = '='), i % 1);
+    output += map.charAt(63 & (block >> (8 - (i % 1) * 8)))
+  ) {
+    charCode = str.charCodeAt((i += 3 / 4));
+
+    if (charCode > 0xff) {
+      throw new Error(
+        "'btoa' failed: The string to be encoded contains characters outside of the Latin1 range.",
+      );
+    }
+
+    block = (block << 8) | charCode;
+  }
+
+  return output;
 }
