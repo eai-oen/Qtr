@@ -93,6 +93,7 @@ export default class ScannerScreen extends React.Component {
       if (encB.xord.size === 1){
         // delete it from encoded
         let ind = Array.from(encB.xord.values())[0];
+        console.log("decoded block num " + ind);
         this.encodedBlocks.splice(encidx, 1);
         if (this.decodedSourceBlocks[ind]===null){
           // ind is the ssource block index we want to add to  
@@ -100,6 +101,7 @@ export default class ScannerScreen extends React.Component {
           runAgain = true;
           this.decodedSourceBlocks[ind] = encB.data;
           this.blocksDecoded++;
+          console.log("Decoded so far: " + this.blocksDecoded);
         }
 
       }
