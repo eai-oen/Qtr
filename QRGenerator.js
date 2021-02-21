@@ -35,6 +35,14 @@ export default class SenderScreen extends React.Component {
     return x;
   }
 
+  padr(x, target) {
+    if (x.length != target) {
+      let difference = target - x.length;
+      x += "0".repeat(difference);
+    }
+    return x
+  }
+
   soliton_distribution(i, k){
     if (i == 1) return 1 / k;
     return 1 / (i * (i - 1));
@@ -56,14 +64,13 @@ export default class SenderScreen extends React.Component {
 
 		// the first block encodes the file extension
 		let fileExt = this.state.fileExtension;
-    let block = this.pad("0") + totalblocks_enc + fileExt;
-		blocks.push(block);
+    let block = fileExt + "/" + totalbytes.toString() + "/";
+		blocks.push(this.padr(block, bytesPerBlock));
 
 		// the rest of the blocks
 		for (let i = 1; i < totalblocks; i++){
-			block = this.pad(i.toString()) + totalblocks_enc;
-      block += file_enc.slice((i - 1) * bytesPerBlock, i * bytesPerBlock);
-			blocks.push(block);
+      block = file_enc.slice((i - 1) * bytesPerBlock, i * bytesPerBlock);
+			blocks.push(this.padr(block, bytesPerBlock));
 		}
 
 		this.sourceBlocks = blocks;
@@ -111,20 +118,19 @@ export default class SenderScreen extends React.Component {
 	    }
 	  }
 
-	  let n = this.sourceBlocks.length;  // the total number of source Blocks
-	  
 	  // construct headers
     // first char: d
     // every 8 char after that: index of the pic
-	  let header = d.toString();
+	  let header = this.pad(this.sourceBlockNum);
+	  header += d.toString();
 	  let inds = new Set();
-	  while (inds.size < d){inds.add(Math.floor(Math.random() * n));}
+	  while (inds.size < d){inds.add(Math.floor(Math.random() * this.sourceBlockNum));}
     inds = Array.from(inds.keys());
     for (let idx of inds) {
       header += this.pad(idx.toString());
     } 
 
-	  console.log("header: " + header);
+	  // console.log("header: " + header);
 
 	  // xor d source blocks together	  
 	  let blocks = new Array(d).fill(null);
@@ -133,7 +139,6 @@ export default class SenderScreen extends React.Component {
     }
     header += blocks.reduce(this.xorStrings);
 
-	  //return header;
 	  this.setState({ qrdata: header });
 	}
 

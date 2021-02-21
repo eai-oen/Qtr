@@ -4,6 +4,7 @@ import { BarCodeScanner } from 'expo-barcode-scanner';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
+import { EMaskUnits } from 'react-native-svg';
 
 
 export default class ScannerScreen extends React.Component {
@@ -26,12 +27,115 @@ export default class ScannerScreen extends React.Component {
     cachedFilePath: null,
   }
 
-  decodedSourceBlocks = {
-    length: -1,
-    data: []
-  };
-
+  decodedSourceBlocks = null;
   encodedBlocks = [];
+  sourceBlockNum = null;
+  blocksDecoded = 0;
+  prevrece = null;
+  scanning = true;
+
+  finalize(){
+    this.scanning = false;
+    let hold = this.decodedSourceBlocks[0].split("+");
+    let extension = hold[0];
+    let numbytes = hold[1];
+    let buffer = this.decodedSourceBlocks.slice(1).join("");
+    for(let b of this.decodedSourceBlocks) {
+      console.log(b.length);
+    }
+    buffer = buffer.slice(0, numbytes);
+    console.log("RECV length: " + buffer.length);
+    console.log("EXPD length: " + numbytes);
+    console.log("EXT: " + extension);
+    for(let i=0; i < buffer.length; i++){
+      if(buffer.charCodeAt(i) >= 64){
+        console.log("ERROR");
+      }
+    }
+    this.processFile(buffer, extension);
+  }
+
+  decodeOneBlock(blockData){
+    // asusming blockData is a string
+  
+    // get header data
+    // first byte: d
+    // every 8 bytes after that: index of the source block
+    if(this.sourceBlockNum === null){
+      this.sourceBlockNum = parseInt(blockData.slice(0, 8));
+      this.decodedSourceBlocks = new Array(this.sourceBlockNum).fill(null);
+    }
+    let d = parseInt(blockData[8]);
+    let inds = new Set();
+    for (var i=0; i<d; i++)
+      inds.add( parseInt(blockData.slice(9+i*8, 17+i*8)) );
+  
+    // this is the main data; store it as number in bytes
+    let dataStr = blockData.slice(9+d*8);
+  
+    this.encodedBlocks.push({
+      xord: inds,
+      data: dataStr
+    });
+    this.updateEncodedBlocks();
+    if(this.blocksDecoded == this.sourceBlockNum) {
+      this.finalize();
+    }
+  }
+
+  updateEncodedBlocks(){
+    let runAgain = false;
+    for(let encidx = this.encodedBlocks.length - 1; encidx >= 0; encidx--){
+      let encB = this.encodedBlocks[encidx]
+      let removal = [];
+      for(let idx of encB.xord.values()) {
+        if (this.decodedSourceBlocks[idx] != null){ // if one of the indices is solved
+          encB.data = this.xorStrings(this.decodedSourceBlocks[idx], encB.data); // xor this shit out
+          removal.push(idx); // delete this index
+        }
+      }
+      for(let hold of removal) { encB.xord.delete(hold); } // remove designated items from xored set
+  
+      // if all but 1 is xor'd out, we move it to decoded
+      if (encB.xord.size === 1){
+        // delete it from encoded
+        let ind = Array.from(encB.xord.values())[0];
+        console.log("decoded block num " + ind);
+        this.encodedBlocks.splice(encidx, 1);
+        if (this.decodedSourceBlocks[ind]!==null){
+          continue;
+        }
+
+        // ind is the ssource block index we want to add to  
+        runAgain = true;
+        this.decodedSourceBlocks[ind] = encB.data;
+        this.blocksDecoded++;
+        console.log("Decoded so far: " + this.blocksDecoded);
+      }
+    }
+  
+    // if there are new blocks added to source
+    // we should check the encoded blocks again
+    if (runAgain){
+      this.updateEncodedBlocks();
+    }
+  }
+
+  xorStrings(a, b){
+    let s = '';
+  
+    // use the longer of the two words to calculate the length of the result
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+      // append the result of the char from the code-point that results from
+      // XORing the char codes (or 0 if one string is too short)
+      s += String.fromCharCode(
+        (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0)
+      );
+    }
+  
+    return s;
+  }
+
 
   async componentDidMount() {
     const { status } = await BarCodeScanner.requestPermissionsAsync();
@@ -83,7 +187,14 @@ export default class ScannerScreen extends React.Component {
   }
 
   qrscanned = (result) => {
-    this.parse(result.data);
+    if(!this.scanning){
+      return;
+    }
+    if(this.prevrece !== result.data) {
+      this.decodeOneBlock(result.data);
+      this.prevrece = result.data;
+    }
+    
     this.setState((state) => ({scanned: state.scanned + 1}));
   }
   
@@ -126,13 +237,13 @@ export default class ScannerScreen extends React.Component {
 
 /* 
 decodedSourceBlocks = {
-  data: [ [], [], [], ...  ]
+  data: [ "", "", "", ...  ]
 }
   the final list of decoded source blocks
 
 encodedBlocks = [ {
   inds: [12, 32],
-  data: [......]
+  data: "......"
 }, {}, ... ]
   the encoded blocks that consists of more than 1 undecoded source blocks
 
@@ -149,90 +260,3 @@ function string_to_bytes(str){
 // goes through the encodedBlocks and
 // checks to see if we can
 // resolve any to the decodedSourceBlocks
-function updateEncodedBlocks(){
-
-  let runAgain = false;
-
-  this.encodedBlocks.forEach((encB, i) => { // for every encoded block
-    encB.inds.forEach((ind, j) => {   // look at the indices it xors together
-      if (ind <= this.decodedSourceBlocks.length &&
-        this.decodedSourceBlocks.data[ind] != null){ // if one of the indices is solved
-
-        // xor this shit out
-        this.decodedSourceBlocks.data[ind].forEach((byte, k) => {
-          encB.data[k] = encB.data[k] ^ byte;
-        });
-
-        // delete this index
-        encB.inds.splice(j, 1);
-      }
-    });
-
-    // if all but 1 is xor'd out, we move it to decoded
-    if (encB.inds.length == 1){
-      runAgain = true;
-
-      
-
-      // x is the current largest index in the decoded blocks
-      let x = this.decodedSourceBlocks.length; 
-
-      // ind is the ssource block index we want to add to  
-      let ind = encB.inds[0];
-
-      // add it to decoded
-      for (let k=x+1; k<=ind; k++)
-        this.decodedSourceBlocks.data.push(null);
-      this.decodedSourceBlocks.data[ind] = encB.data;
-
-      this.decodedSourceBlocks.length = Math.max(x, ind);
-
-      // delete it from encoded
-      this.encodedBlocks.splice(i, 1);
-
-      
-    }
-
-  });
-
-  // if there are new blocks added to source
-  // we should check the encoded blocks again
-  if (runAgain){
-    this.updateEncodedBlocks();
-  }
-}
-
-
-
-function decodeOneBlock(blockData){
-  // asusming blockData is a string
-
-  // get header data
-    // first byte: d
-    // every 8 bytes after that: index of the source block
-  let d = parseInt(blockData[0]);
-  let inds = [];
-  for (var i=0; i<d; i++)
-    inds.push( parseInt(blockData.slice(1+i*8, 1+(i+1)*8)) );
-
-  console.log('ok i read d: ');
-  console.log(d);
-  console.log('and indexes ');
-  console.log(inds);
-
-  // this is the main data; store it as number in bytes
-  let dataStr = blockData.slice(1+d*8);
-  let data = [];
-  for (var i=0; i<dataStr.length; i++)
-    data.push(dataStr.charCodeAt(i));
-
-
-  this.encodedSourceBlocks.push({
-    inds: inds,
-    data: data
-  });
-  
-
-  this.updateEncodedBlocks();
-
-}
