@@ -87,12 +87,10 @@ export default class SenderScreen extends React.Component {
 	}
 
   xorStrings(a, b){
+  	a = atob(a);
+  	b = atob(b);
     let s = '';
-  
-    // use the longer of the two words to calculate the length of the result
     for (let i = 0; i < Math.max(a.length, b.length); i++) {
-      // append the result of the char from the code-point that results from
-      // XORing the char codes (or 0 if one string is too short)
       s += String.fromCharCode(
         (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0)
       );

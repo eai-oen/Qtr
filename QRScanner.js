@@ -36,6 +36,10 @@ export default class ScannerScreen extends React.Component {
 
   finalize(){
     this.scanning = false;
+
+    for (var i=0; i<this.decodedSourceBlocks.length; i++)
+      this.decodedSourceBlocks[i] = btoa(this.decodedSourceBlocks[i]);
+
     let hold = this.decodedSourceBlocks[0].split("+");
     let extension = hold[0];
     let numbytes = hold[1];
@@ -47,11 +51,7 @@ export default class ScannerScreen extends React.Component {
     console.log("RECV length: " + buffer.length);
     console.log("EXPD length: " + numbytes);
     console.log("EXT: " + extension);
-    for(let i=0; i < buffer.length; i++){
-      if(buffer.charCodeAt(i) >= 64){
-        console.log("ERROR");
-      }
-    }
+    
     this.processFile(buffer, extension);
   }
 
