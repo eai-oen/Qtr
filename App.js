@@ -21,6 +21,9 @@ function HomeScreen(props) {
         title="Go to Sender"
         onPress={() => props.navigation.navigate('Sender')}
       />
+
+      
+
     </View>
   )
 }
@@ -36,6 +39,8 @@ export default function App() {
     </NavigationContainer>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   container: {

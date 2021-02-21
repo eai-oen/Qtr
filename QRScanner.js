@@ -6,6 +6,7 @@ export default class ScannerScreen extends React.Component {
   state = {
     hasPermission: null,
     scanned: false,
+    data: "nodata"
   }
 
   async componentDidMount() {
@@ -16,6 +17,7 @@ export default class ScannerScreen extends React.Component {
   handleBarCodeScanned = ({ type, data }) => {
     this.setState({scanned: true});
     alert(`Bar code with type ${type} and data ${data} has been scanned!`);
+    this.setState({data: data })
   }
 
   render() {
@@ -32,7 +34,12 @@ export default class ScannerScreen extends React.Component {
           style={StyleSheet.absoluteFillObject}
         />
         <Text>Scanner Screen</Text>
+
+        <Text> {this.state.data} is the data </Text>
+
       </View>
     )
   }
 }
+
+
