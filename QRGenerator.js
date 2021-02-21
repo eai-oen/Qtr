@@ -128,8 +128,6 @@ export default class SenderScreen extends React.Component {
       header += this.pad(idx.toString());
     } 
 
-	  // console.log("header: " + header);
-
 	  // xor d source blocks together	  
 	  let blocks = new Array(d).fill(null);
     for (let i = 0; i < d; i++) {
