@@ -81,14 +81,14 @@ export default class ScannerScreen extends React.Component {
     this.setState((state) => ({scanned: state.scanned + 1}));
   }
   
-  async saveImage() {
-    await MediaLibrary.saveToLibraryAsync(this.state.filepath);
-  }
-
   async processFile(base64string, fileExtension) {
     const filepath = FileSystem.cacheDirectory + "qtr_file" + fileExtension;
     await FileSystem.writeAsStringAsync(filepath, base64string, {encoding: FileSystem.EncodingType.Base64});
     this.setState({cachedFilePath: filepath});
+
+    try {
+      await MediaLibrary.saveToLibraryAsync(filepath);
+    } catch (error) {}
 
     await Sharing.shareAsync(filepath);
   }
@@ -104,9 +104,11 @@ export default class ScannerScreen extends React.Component {
       percentage = this.state.nreceived / this.state.ereceived * 100;
 
       if (percentage < 100)
-        scanStatus = "Receiving....(" + this.state.nreceived.toString() + "/" + this.state.ereceived.toString() + ")";
+        scanStatus = "Receiving(" + this.state.nreceived.toString() + "/" + this.state.ereceived.toString() + ")";
       else
         scanStatus = "File received"
+
+      scanStatus += "; Scanned " + this.state.scanned.toString();
     }
 
     return (

@@ -89,7 +89,7 @@ export default class SenderScreen extends React.Component {
       data = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.All
       });
-      success = (data.cancelled === "false");
+      success = (data.cancelled === false);
     } else {
       data = await DocumentPicker.getDocumentAsync();
       success = (data.type === "success");
