@@ -31,71 +31,68 @@ export default class SenderScreen extends React.Component {
   }
 
   // the bytes are read right to left
-  number_to_bytes(num, len=4){
-  	var res = [];
-  	for (var i=0; i<len; i++){
-  		res.push(num%256);
-  		num = Math.floor(num/256);
-  	}
-  	return res;
+  // number_to_bytes(num, len=4){
+  // 	var res = [];
+  // 	for (var i=0; i<len; i++){
+  // 		res.push(num%256);
+  // 		num = Math.floor(num/256);
+  // 	}
+  // 	return res;
+  // }
+  pad(x) {
+    while(x.length != 8) {
+      x = "0" + x;
+    }
+    return x;
   }
-
+  // Buffer.from(fileExt)
 	createSourceBlocks(){
 		if (this.state.fileLoaded == false) return null;
 
-		// header: 4 bytes for block index, 4 bytes for total # of blocks
-		// content: 2000 bytes
 		let bytesPerBlock = 30;	
-		let data = Base64.atob(this.state.fileData);
+    let file_enc = this.state.fileData;
 
+    console.log("PEEN");
 		let blocks = [];
-		let n = data.length;
-		let m = Math.ceil(n/bytesPerBlock) + 1;
-    m = 10;
-		let mb8 = this.number_to_bytes(m);
-    console.log("Number of blocks: " + n);
+    console.log("PEEN");
+		let totalbytes = file_enc.length;
+    console.log("PEEN");
+		let totalblocks = Math.ceil(totalbytes/bytesPerBlock) + 1;
+    console.log("PEEN");
+		let totalblocks_enc = this.pad(totalblocks.toString());
+    console.log("PEEN");
+    console.log("Number of blocks: " + totalblocks);
+    console.log("PEEN");
 
 
-		// the first 0/m block encodes the file extension
-		var fileExt = this.state.fileExtension;
-		var block = this.number_to_bytes(0).concat(mb8);
-		for (var i=0; i<fileExt.length; i++)
-			block.push(fileExt.charCodeAt(i));
+		// the first block encodes the file extension
+    console.log(this.state.fileExtension);
+		let fileExt = this.state.fileExtension;
+    let block = this.pad("0") + totalblocks_enc + fileExt;
 		blocks.push(block);
 
 		// the rest of the blocks
-		for (var i = 1; i < m; i++){
-			block = this.number_to_bytes(i).concat(mb8);
+		for (let i = 1; i < totalblocks; i++){
+			block = this.pad(i.toString()) + totalblocks_enc;
       if (i == 0){
         console.log(block.length);
       } 
-			for (var j=0; j<bytesPerBlock && (i * bytesPerBlock) + j < n; j++)
-				block.push(data.charCodeAt((i * bytesPerBlock) + j));
+      block += file_enc.slice(i * bytesPerBlock, (i + 1) * bytesPerBlock);
 			blocks.push(block);
 		}
 
 		this.sourceBlocks = blocks;
-		this.sourceBlockNum = m;
+		this.sourceBlockNum = totalblocks;
 		this.sendWhichBlock = 0;	
 
 		setInterval( ()=>this.sendOneBlock() , 600);
 	}
 
-
 	sendOneBlock(){
 		var index = this.sendWhichBlock;
-    // console.log(index);
-
-		this.setState({
-			qrdata: {
-				data: this.sourceBlocks[index],
-				mode: 'byte'
-			}
-		});
-
+		this.setState({ qrdata: this.sourceBlocks[index]});
 		this.sendWhichBlock = (index + 1) % this.sourceBlockNum;
 	}
-
   
   // activates Document/Image picker and stores file content
   // into state.fileData with base64 encoding
@@ -124,7 +121,7 @@ export default class SenderScreen extends React.Component {
       <View>
         <Text>Sender Screen</Text>
         <View style={{justifyContent: 'center', alignItems: 'center'}}>
-          <QRCode value={[this.state.qrdata]} size={350}/>
+          <QRCode value={this.state.qrdata} size={350}/>
         </View>
         <Button title="Get Image" onPress={() => this.pickFile(true)}/>
         <Button title="Get File" onPress={() => this.pickFile(false)}/>
@@ -144,45 +141,3 @@ export default class SenderScreen extends React.Component {
     );
   }
 }
-
-const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-const Base64 = {
-  btoa: (input = '')  => {
-    let str = input;
-    let output = '';
-
-    for (let block = 0, charCode, i = 0, map = chars;
-    str.charAt(i | 0) || (map = '=', i % 1);
-    output += map.charAt(63 & block >> 8 - i % 1 * 8)) {
-
-      charCode = str.charCodeAt(i += 3/4);
-
-      if (charCode > 0xFF) {
-        throw new Error("'btoa' failed: The string to be encoded contains characters outside of the Latin1 range.");
-      }
-      
-      block = block << 8 | charCode;
-    }
-    
-    return output;
-  },
-
-  atob: (input = '') => {
-    let str = input.replace(/=+$/, '');
-    let output = '';
-
-    if (str.length % 4 == 1) {
-      throw new Error("'atob' failed: The string to be decoded is not correctly encoded.");
-    }
-    for (let bc = 0, bs = 0, buffer, i = 0;
-      buffer = str.charAt(i++);
-
-      ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer,
-        bc++ % 4) ? output += String.fromCharCode(255 & bs >> (-2 * bc & 6)) : 0
-    ) {
-      buffer = chars.indexOf(buffer);
-    }
-
-    return output;
-  }
-};

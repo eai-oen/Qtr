@@ -24,19 +24,6 @@ export default class ScannerScreen extends React.Component {
     cachedFilePath: null,
   }
 
-
-  bytes_to_number(bytes){
-    console.log("GOT HERE");
-    console.log("Received string of length " + bytes.length);
-  	let p2 = 1, res = 0;
-    for(let ind = 0; ind < bytes.length; ind++){
-      console.log(bytes.charCodeAt(ind));
-      res += p2 * bytes.charCodeAt(ind);
-      p2 *= 256;
-    }
-  	return res;
-  }
-
   async componentDidMount() {
     const { status } = await BarCodeScanner.requestPermissionsAsync();
     this.setState({hasPermission: status === "granted"});
@@ -44,12 +31,12 @@ export default class ScannerScreen extends React.Component {
 
   parse = (s) => {
     if(!this.buffers.scanning) {return}
-    console.log("SCANNED STRING LENGTH " + s.length + " WITH TYPE " + typeof(s));
-    let bnumber = this.bytes_to_number(s.slice(0, 4)); 
-    let total = this.bytes_to_number(s.slice(4, 8)); 
+    console.log("SCANNED STRING LENGTH " + s.length);
+    let bnumber = parseInt(s.slice(0, 8)); 
+    let total = parseInt((s.slice(8, 16)); 
     console.log("Block Number: " + bnumber);
     console.log("Total Blocks: " + total);
-    let data = s.slice(8);
+    let data = s.slice(16);
     
     // Init logic
     if(this.buffers.buffer === null) {
