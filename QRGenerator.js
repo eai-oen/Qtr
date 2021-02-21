@@ -95,8 +95,6 @@ export default class SenderScreen extends React.Component {
   }
 
 	sendOneEncodedBlock(){
-		console.log("Encoding///");
-
 	  // k is the maximum number of source blocks a block could have
 	  let k = 5; 
 
@@ -113,8 +111,6 @@ export default class SenderScreen extends React.Component {
 	    }
 	  }
 
-	  console.log("d: " + d);
-
 	  let n = this.sourceBlocks.length;  // the total number of source Blocks
 	  
 	  // construct headers
@@ -122,18 +118,18 @@ export default class SenderScreen extends React.Component {
     // every 8 char after that: index of the pic
 	  let header = d.toString();
 	  let inds = new Set();
-	  while (inds.length < d){inds.add(Math.floor(Math.random() * n));}
-    inds = inds.keys()
+	  while (inds.size < d){inds.add(Math.floor(Math.random() * n));}
+    inds = Array.from(inds.keys());
     for (let idx of inds) {
       header += this.pad(idx.toString());
-    }
+    } 
 
 	  console.log("header: " + header);
 
 	  // xor d source blocks together	  
 	  let blocks = new Array(d).fill(null);
     for (let i = 0; i < d; i++) {
-      block[i] = this.sourceBlocks[inds[i]];
+      blocks[i] = this.sourceBlocks[inds[i]];
     }
     header += blocks.reduce(this.xorStrings);
 
