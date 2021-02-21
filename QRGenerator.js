@@ -36,8 +36,8 @@ export default class SenderScreen extends React.Component {
   }
 
   soliton_distribution(i, k){
-    if (i == 1) return 1/k;
-    return 1/(i*(i-1));
+    if (i == 1) return 1 / k;
+    return 1 / (i * (i - 1));
   }
 
 	createSourceBlocks(){
@@ -79,62 +79,66 @@ export default class SenderScreen extends React.Component {
 		this.sendWhichBlock = (index + 1) % this.sourceBlockNum;
 	}
 
+  xorStrings(a, b){
+    let s = '';
+  
+    // use the longer of the two words to calculate the length of the result
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+      // append the result of the char from the code-point that results from
+      // XORing the char codes (or 0 if one string is too short)
+      s += String.fromCharCode(
+        (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0)
+      );
+    }
+  
+    return s;
+  }
 
 	sendOneEncodedBlock(){
-
-
-		console.log("encoding");
+		console.log("Encoding///");
 
 	  // k is the maximum number of source blocks a block could have
 	  let k = 5; 
 
 	  // d is the number of source blocks this encoded block should contain
 	  // it shuold be randomly assigned according to the solition distribution
-	  let d = Math.random();
-	  let sum = 0;
-	  for (var i=1; i<=k; i++){
-	  	sum += this.soliton_distribution(i, k);
-	    if (d < sum){
+	  let sample = Math.random();
+	  let cdf = 0;
+    let d = null;
+	  for (let i=1; i<=k; i++){
+	  	cdf += this.soliton_distribution(i, k);
+	    if (sample < cdf || i == k){
 	      d = i;
 	      break;
 	    }
 	  }
 
-	  console.log("d: ");
-	  console.log(d);
+	  console.log("d: " + d);
 
 	  let n = this.sourceBlocks.length;  // the total number of source Blocks
 	  
 	  // construct headers
-	    // first char: d
-	    // every 8 char after that: index of the pic
+    // first char: d
+    // every 8 char after that: index of the pic
 	  let header = d.toString();
-	  let inds = [];
-	  for (var i=0; i<d; i++){
-	    let ind = Math.floor(Math.random() * n);
-	    inds.push(ind);
-	    header += this.pad(ind.toString());
+	  let inds = new Set();
+	  while (inds.length < d){
+	    let idx = Math.floor(Math.random() * n);
+	    inds.add(idx);	    
 	  }
+    inds = inds.keys()
+    for (let idx of inds) {
+      header += this.pad(idx.toString());
+    }
 
-	  console.log("header: ");
-	  console.log(header);
+	  console.log("header: " + header);
 
 	  // xor d source blocks together	  
-	  let data = []
-	  for (var i=0; i<d; i++){
-	    let block = atob(this.sourceBlocks[inds[i]]);	// basse64string => 256 string
-	    for (var j=0; j<block.length; j++){
-	      if (data[j] == undefined) data[j] = 0;
-	      data[j] = data[j] ^ block.charCodeAt(j);
-	    }
-
-	    console.log("data: ");
-	    console.log(data);
-	  }
-
-	  // append the xors into the header
-	  for (var i=0; i<data.length; i++)
-	  	header += String.fromCharCode(data[i]);
+	  let block = new Array(d).fill(null);
+    for (let i = 0; i < d; i++) {
+      block[i] = this.sourceBlocks[inds[i]];
+    }
+    header += blocks.reduce(this.xorStrings);
 
 	  //return header;
 	  this.setState({ qrdata: header });
