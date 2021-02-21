@@ -46,6 +46,7 @@ export default class SenderScreen extends React.Component {
 		let totalblocks = Math.ceil(totalbytes/bytesPerBlock) + 1;
 		let totalblocks_enc = this.pad(totalblocks.toString());
     console.log("Number of blocks: " + totalblocks);
+    console.log("Length of file: " + totalbytes);
 
 
 		// the first block encodes the file extension
@@ -56,7 +57,7 @@ export default class SenderScreen extends React.Component {
 		// the rest of the blocks
 		for (let i = 1; i < totalblocks; i++){
 			block = this.pad(i.toString()) + totalblocks_enc;
-      block += file_enc.slice(i * bytesPerBlock, (i + 1) * bytesPerBlock);
+      block += file_enc.slice((i - 1) * bytesPerBlock, i * bytesPerBlock);
 			blocks.push(block);
 		}
 

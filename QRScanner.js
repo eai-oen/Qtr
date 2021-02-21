@@ -54,7 +54,7 @@ export default class ScannerScreen extends React.Component {
       this.buffers.buffer[bnumber] = data;
       this.setState({nreceived: this.state.nreceived + 1});
       this.buffers.nreceived++;
-      if(bnumber === 1) {
+      if(bnumber === 0) {
         this.setState({extension: data});
         this.buffers.extension = data;
       }
@@ -69,8 +69,9 @@ export default class ScannerScreen extends React.Component {
       
       let extension = this.buffers.buffer[0];
       console.log("Extension: " + extension);
-      
-      this.processFile(this.buffers.buffer.slice(1).join(), extension)
+      let hold = this.buffers.buffer.slice(1).join();
+      console.log("Received length: " + hold.length);
+      this.processFile(hold, extension);
     }
   }
 
