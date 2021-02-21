@@ -70,7 +70,7 @@ export default class ScannerScreen extends React.Component {
       let extension = this.buffers.buffer[0];
       console.log("Extension: " + extension);
       
-      this.processFile(this.buffers.buffer.slice(1).join())
+      this.processFile(this.buffers.buffer.slice(1).join(), extension)
     }
   }
 
