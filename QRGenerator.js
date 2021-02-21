@@ -30,43 +30,25 @@ export default class SenderScreen extends React.Component {
     }
   }
 
-  // the bytes are read right to left
-  // number_to_bytes(num, len=4){
-  // 	var res = [];
-  // 	for (var i=0; i<len; i++){
-  // 		res.push(num%256);
-  // 		num = Math.floor(num/256);
-  // 	}
-  // 	return res;
-  // }
   pad(x) {
-    while(x.length != 8) {
-      x = "0" + x;
-    }
+    while(x.length != 8) { x = "0" + x;}
     return x;
   }
-  // Buffer.from(fileExt)
+
 	createSourceBlocks(){
 		if (this.state.fileLoaded == false) return null;
 
-		let bytesPerBlock = 30;	
+		let bytesPerBlock = 1500;	
     let file_enc = this.state.fileData;
 
-    console.log("PEEN");
 		let blocks = [];
-    console.log("PEEN");
 		let totalbytes = file_enc.length;
-    console.log("PEEN");
 		let totalblocks = Math.ceil(totalbytes/bytesPerBlock) + 1;
-    console.log("PEEN");
 		let totalblocks_enc = this.pad(totalblocks.toString());
-    console.log("PEEN");
     console.log("Number of blocks: " + totalblocks);
-    console.log("PEEN");
 
 
 		// the first block encodes the file extension
-    console.log(this.state.fileExtension);
 		let fileExt = this.state.fileExtension;
     let block = this.pad("0") + totalblocks_enc + fileExt;
 		blocks.push(block);
@@ -74,9 +56,6 @@ export default class SenderScreen extends React.Component {
 		// the rest of the blocks
 		for (let i = 1; i < totalblocks; i++){
 			block = this.pad(i.toString()) + totalblocks_enc;
-      if (i == 0){
-        console.log(block.length);
-      } 
       block += file_enc.slice(i * bytesPerBlock, (i + 1) * bytesPerBlock);
 			blocks.push(block);
 		}
@@ -85,7 +64,7 @@ export default class SenderScreen extends React.Component {
 		this.sourceBlockNum = totalblocks;
 		this.sendWhichBlock = 0;	
 
-		setInterval( ()=>this.sendOneBlock() , 600);
+		setInterval( ()=>this.sendOneBlock() , 100);
 	}
 
 	sendOneBlock(){

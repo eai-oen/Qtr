@@ -11,16 +11,18 @@ export default class ScannerScreen extends React.Component {
     buffer: null,       // Bytes buffer
     scanning: true,
     loaded: false,
-    nreceived: null,       // Bytes buffer
-    ereceived: null,       // Bytes buffer
+    nreceived: 0,       // Bytes buffer
+    ereceived: "???",       // Bytes buffer
+    extension: "???",
   }
   state = {
     hasPermission: null,
     scanned: 0,
     scanning: true,
     loaded: false,
-    nreceived: null,    // number of blocks received
-    ereceived: null,    // number of blocks expected
+    nreceived: 0,    // number of blocks received
+    ereceived: "???",    // number of blocks expected
+    extension: "???",
     cachedFilePath: null,
   }
 
@@ -31,11 +33,8 @@ export default class ScannerScreen extends React.Component {
 
   parse = (s) => {
     if(!this.buffers.scanning) {return}
-    console.log("SCANNED STRING LENGTH " + s.length);
     let bnumber = parseInt(s.slice(0, 8)); 
-    let total = parseInt((s.slice(8, 16)); 
-    console.log("Block Number: " + bnumber);
-    console.log("Total Blocks: " + total);
+    let total = parseInt(s.slice(8, 16)); 
     let data = s.slice(16);
     
     // Init logic
@@ -55,6 +54,10 @@ export default class ScannerScreen extends React.Component {
       this.buffers.buffer[bnumber] = data;
       this.setState({nreceived: this.state.nreceived + 1});
       this.buffers.nreceived++;
+      if(bnumber === 1) {
+        this.setState({extension: data});
+        this.buffers.extension = data;
+      }
     }
     
     // End logic
@@ -64,15 +67,15 @@ export default class ScannerScreen extends React.Component {
       this.buffers.scanning = false;
       this.buffers.loaded = true;
       
-      let extension = Base64.btoa(this.buffers.buffer[0]);
+      let extension = this.buffers.buffer[0];
       console.log("Extension: " + extension);
       
-      this.processFile(this.buffers.buffer.slice(1).join())
+      let fullfile = this.processFile(this.buffers.buffer.slice(1).join())
+      console.log("FULL FILESIZE: " + fullfile.length)
     }
   }
 
   qrscanned = (result) => {
-    console.log(result);
     this.parse(result.data);
     this.setState((state) => ({scanned: state.scanned + 1}));
   }
@@ -102,53 +105,12 @@ export default class ScannerScreen extends React.Component {
           barCodeTypes={[BarCodeScanner.Constants.BarCodeType.qr]}
           style={StyleSheet.absoluteFillObject}
           />
-        <Text>Scanner Screen</Text>
-        <Text>Number scanned overall: {this.state.scanned}</Text>
-        <Text>Received {this.state.nreceived} out of {this.state.ereceived} codes. Loaded: {this.state.loaded.toString()}</Text>
+        <Text>Scanner Info</Text>
+        <Text>QR codes scanned overall: {this.state.scanned}</Text>
+        <Text>Received {this.state.nreceived} out of {this.state.ereceived} codes.</Text>
+        <Text>Loaded: {this.state.loaded.toString()}</Text>
+        <Text>File Extension: {this.state.extension}</Text>
       </View>
     )
   }
 }
-
-
-const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-const Base64 = {
-  btoa: (input = '')  => {
-    let str = input;
-    let output = '';
-
-    for (let block = 0, charCode, i = 0, map = chars;
-    str.charAt(i | 0) || (map = '=', i % 1);
-    output += map.charAt(63 & block >> 8 - i % 1 * 8)) {
-
-      charCode = str.charCodeAt(i += 3/4);
-
-      if (charCode > 0xFF) {
-        throw new Error("'btoa' failed: The string to be encoded contains characters outside of the Latin1 range.");
-      }
-      
-      block = block << 8 | charCode;
-    }
-    
-    return output;
-  },
-
-  atob: (input = '') => {
-    let str = input.replace(/=+$/, '');
-    let output = '';
-
-    if (str.length % 4 == 1) {
-      throw new Error("'atob' failed: The string to be decoded is not correctly encoded.");
-    }
-    for (let bc = 0, bs = 0, buffer, i = 0;
-      buffer = str.charAt(i++);
-
-      ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer,
-        bc++ % 4) ? output += String.fromCharCode(255 & bs >> (-2 * bc & 6)) : 0
-    ) {
-      buffer = chars.indexOf(buffer);
-    }
-
-    return output;
-  }
-};
