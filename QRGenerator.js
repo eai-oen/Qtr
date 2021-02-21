@@ -3,8 +3,8 @@ import { Platform, Button, StyleSheet, Text, View, Image } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
+import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
 
 //import DocumentPicker from 'react-native-document-picker';
 
@@ -13,7 +13,12 @@ export default class SenderScreen extends React.Component {
     data: null,
     base64: "fuck",
     status: "choose",
-    path: null,
+    path: null,  
+    
+
+    fileLoaded: false,
+    fileExtension: null,
+    fileData: null
   }
   async getFile() {
     const result = await DocumentPicker.getDocumentAsync();
@@ -28,25 +33,30 @@ export default class SenderScreen extends React.Component {
     }
   }
 
-  async getImage() {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      base64: true,
-    });
+  async pickImage() {
+    this.setState({fileLoaded: false});
+    // const { uri, base64 } = await ImagePicker.launchImageLibraryAsync({
+    //   mediaTypes: ImagePicker.MediaTypeOptions.All,
+    //   base64: true,
+    // });
 
-    this.setState({data: result});  
-    console.log(result.base64.substring(0, 100));
-    this.setState({status: "loading"});
+    const { uri } = await DocumentPicker.getDocumentAsync();
+    let base65 = await FileSystem.readAsStringAsync(uri, {encoding: FileSystem.EncodingType.Base64});
 
-    const extension = result.uri.substring(result.uri.lastIndexOf('.'));
-    const filepath = FileSystem.cacheDirectory + "myfile" + extension;
+    // this.setState({
+    //   fileLoaded: true,
+    //   fileData: base64,
+    //   fileExtension: uri.substring(uri.lastIndexOf('.')),
+    // });
 
-    await FileSystem.writeAsStringAsync(filepath, result.base64, {encoding: FileSystem.EncodingType.Base64});
+    let filepath = FileSystem.cacheDirectory + "qrt_file" + uri.substring(uri.lastIndexOf('.'));
+    await FileSystem.writeAsStringAsync(filepath, base65, {encoding: FileSystem.EncodingType.Base64});
+    this.setState({path: filepath});
+    // let filepath2 = await FileSystem.getContentUriAsync(filepath)
 
-    this.setState({status: "loaded", path: filepath});
-    console.log(this.state.path + " has been created ");
-    
-    await MediaLibrary.saveToLibraryAsync(filepath);
+    // this.setState({cachedFilePath: filepath});
+    await Sharing.shareAsync(filepath);
+    //this.setState({dd: "im done"});
   }
 
   render() {
@@ -59,7 +69,7 @@ export default class SenderScreen extends React.Component {
         />
         <Button
           title="Get Image"
-          onPress={() => this.getImage()}
+          onPress={() => this.pickImage()}
         />
         <Button
           title="Get File"
