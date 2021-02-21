@@ -122,10 +122,7 @@ export default class SenderScreen extends React.Component {
     // every 8 char after that: index of the pic
 	  let header = d.toString();
 	  let inds = new Set();
-	  while (inds.length < d){
-	    let idx = Math.floor(Math.random() * n);
-	    inds.add(idx);	    
-	  }
+	  while (inds.length < d){inds.add(Math.floor(Math.random() * n));}
     inds = inds.keys()
     for (let idx of inds) {
       header += this.pad(idx.toString());
