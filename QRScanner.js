@@ -8,14 +8,6 @@ import { EMaskUnits } from 'react-native-svg';
 
 
 export default class ScannerScreen extends React.Component {
-  buffers = {
-    buffer: null,       // Bytes buffer
-    scanning: true,
-    loaded: false,
-    nreceived: 0,       // Bytes buffer
-    ereceived: "???",       // Bytes buffer
-    extension: "???",
-  }
   state = {
     hasPermission: null,
     scanned: 0,
@@ -55,6 +47,7 @@ export default class ScannerScreen extends React.Component {
     // every 8 bytes after that: index of the source block
     if(this.sourceBlockNum === null){
       this.sourceBlockNum = parseInt(blockData.slice(0, 8));
+      this.setState({ereceived: this.sourceBlockNum});
       this.decodedSourceBlocks = new Array(this.sourceBlockNum).fill(null);
     }
     let d = parseInt(blockData[8]);
@@ -93,6 +86,7 @@ export default class ScannerScreen extends React.Component {
       if (encB.xord.size === 1){
         // delete it from encoded
         let ind = Array.from(encB.xord.values())[0];
+        console.log("decoded block num " + ind);
         this.encodedBlocks.splice(encidx, 1);
         if (this.decodedSourceBlocks[ind]===null){
           // ind is the ssource block index we want to add to  
@@ -100,6 +94,8 @@ export default class ScannerScreen extends React.Component {
           runAgain = true;
           this.decodedSourceBlocks[ind] = encB.data;
           this.blocksDecoded++;
+          this.setState({nreceived: this.blocksDecoded});
+          console.log("Decoded so far: " + this.blocksDecoded);
         }
 
       }
