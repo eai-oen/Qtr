@@ -8,10 +8,14 @@ import * as ImagePicker from 'expo-image-picker';
 
 export default class SenderScreen extends React.Component {
   state = {
-    data: null    
+    data: null,
+    fileLoaded: true,
+    fileExtension: 'jpg',
+    fileData: null,
+    qrdata: "initial"
   };
 
-  qrdata = "initial";
+ 
   sendWhichBlock = -1;
   sourceBlocks = null;
   sourceBlockNum = -1;
@@ -21,7 +25,7 @@ export default class SenderScreen extends React.Component {
   	var p2 = 1, res = 0;
   	arr.forEach((val, ind) => {
   		res += p2 * val;
-  		p2 *= 2;
+  		p2 *= 256;
   	});
   	return res;
   }
@@ -30,13 +34,15 @@ export default class SenderScreen extends React.Component {
   number_to_bytes(num, len=4){
   	var res = [];
   	for (var i=0; i<len; i++){
-  		res.append(num%2);
-  		num = Math.floor(num/2);
+  		res.push(num%256);
+  		num = Math.floor(num/256);
   	}
   	return res;
   }
 
 	createSourceBlocks(){
+
+		console.log("creating source blocks");
 
 		if (this.state.fileLoaded == false) return null;
 
@@ -48,36 +54,55 @@ export default class SenderScreen extends React.Component {
 		var blocks = [];
 		var n = data.length;
 		var m = Math.ceil(n/bytesPerBlock);
-		var mb8 = base10_to_bytes(m);
+		var mb8 = this.number_to_bytes(m);
+
+		console.log("vars");
+		console.log(mb8);
+		console.log(m);
+		console.log(n);
 
 		// the first 0/m block encodes the file extension
 		var fileExt = this.state.fileExtension;
-		var block = base10_to_bytes(0).concat(mb8);
+		var block = this.number_to_bytes(0).concat(mb8);
 		for (var i=0; i<fileExt.length; i++)
-			block.append(fileExt.charCodeAt(i));
-		blocks.append(block);
+			block.push(fileExt.charCodeAt(i));
+		blocks.push(block);
+
+		console.log("first block only");
+		console.log(blocks);
 
 		// the rest of the blocks
 		for (var i=0; i<m; i++){
-			block = base10_to_bytes(i).concat(mb8);
+			block = this.number_to_bytes(i).concat(mb8);
 			for (var j=0; j<bytesPerBlock && i+j<n; j++)
-				header.append(data.charCodeAt(i+j));
-			blocks.append(block);
+				block.push(data.charCodeAt(i+j));
+			blocks.push(block);
 		}
 
 		this.sourceBlocks = blocks;
 		this.sourceBlockNum = m;
 		this.sendWhichBlock = 0;	
+
+		setInterval( ()=>this.sendOneBlock() , 1000);
 	}
 
 
 	sendOneBlock(){
+		console.log("sending this");
+		console.log(this.sendWhichBlock);
+
+
 		var index = this.sendWhichBlock;
-		this.qrdata ={
-			data: this.sourceBlocks[this.index],
-			mode: 'byte'
-		}
-		this.sendWhichBlock = (index + 1) % sourceBlockNum;
+		console.log(this.sourceBlocks[index]);
+
+		this.setState({
+			qrdata: {
+				data: this.sourceBlocks[index],
+				mode: 'byte'
+			}
+		});
+
+		this.sendWhichBlock = (index + 1) % this.sourceBlockNum;
 	}
 
   async getFile() {
@@ -102,10 +127,14 @@ export default class SenderScreen extends React.Component {
       base64: true,
     });
     console.log("got the file");
+    this.setState({fileData: result.base64});
     this.createSourceBlocks();
   }
 
   render() {
+
+  	console.log(this.state.qrdata);
+
     return (
       <View>
         <Text>Sender Screen</Text>
@@ -113,7 +142,7 @@ export default class SenderScreen extends React.Component {
 
         <QRCode
               value={
-              	this.state.qrdata
+              	[this.state.qrdata]
               }
               size={400}
          />
@@ -123,6 +152,7 @@ export default class SenderScreen extends React.Component {
           onPress={() => this.getImage()}
         />
         <Text>{this.state.data ? this.state.data.base64 + " " + this.state.data.uri : "Lmao" }</Text>
+
 
 
       </View>
