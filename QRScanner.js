@@ -31,9 +31,9 @@ export default class ScannerScreen extends React.Component {
 
   parse = (s) => {
     if(!this.buffers.scanning) {return}
-    var bnumber = parseInt(s.slice(0, 2)); 
-    var total = parseInt(s.slice(2, 4)); 
-    var data = s.slice(4);
+    var bnumber = parseInt(s.slice(0, 4)); 
+    var total = parseInt(s.slice(4, 8)); 
+    var data = s.slice(8);
     // Init logic
     if(this.buffers.buffer === null) {
       this.setState({
@@ -51,16 +51,15 @@ export default class ScannerScreen extends React.Component {
       this.setState({nreceived: this.state.nreceived + 1});
       this.buffers.nreceived++;
     }
-    // End logic
+    // End logiec
     if(this.buffers.nreceived === this.buffers.ereceived){
       console.log("Received all blocks")
       this.setState({scanning: false, loaded: true});
       this.buffers.scanning = false;
       this.buffers.loaded = true;
       
-      this.processImage(this.buffer.join())
+      this.processFile(this.buffer.join())
     }
-
   }
 
   qrscanned = ({ type, data }) => {
@@ -72,12 +71,12 @@ export default class ScannerScreen extends React.Component {
     await MediaLibrary.saveToLibraryAsync(this.state.filepath);
   }
 
-  async processImage(base64string, fileExtension) {
+  async processFile(base64string, fileExtension) {
     const filepath = FileSystem.cacheDirectory + "qtr_file" + fileExtension;
     await FileSystem.writeAsStringAsync(filepath, base64string, {encoding: FileSystem.EncodingType.Base64});
     this.setState({cachedFilePath: filepath});
 
-    Sharing.shareAsync(filepath);
+    await Sharing.shareAsync(filepath);
   }
 
   render() {
