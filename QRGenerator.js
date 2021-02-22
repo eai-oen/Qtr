@@ -106,7 +106,7 @@ export default class SenderScreen extends React.Component {
 	  let sample = Math.random();
 	  let cdf = 0;
     let d = null;
-	  for (let i=1; i<=k; i++){
+	  for (let i = 1; i <= k; i++){
 	  	cdf += this.soliton_distribution(i, k);
 	    if (sample < cdf || i == k){
 	      d = i;
@@ -206,28 +206,6 @@ export default class SenderScreen extends React.Component {
 
 const chars =
   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-
-function atob (input = ''){
-  let str = input.replace(/[=]+$/, '');
-  let output = '';
-
-  if (str.length % 4 == 1) {
-    throw new Error(
-      "'atob' failed: The string to be decoded is not correctly encoded.",
-    );
-  }
-  for (
-    let bc = 0, bs = 0, buffer, i = 0;
-    (buffer = str.charAt(i++));
-    ~buffer && ((bs = bc % 4 ? bs * 64 + buffer : buffer), bc++ % 4)
-      ? (output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6))))
-      : 0
-  ) {
-    buffer = chars.indexOf(buffer);
-  }
-
-  return output;
-}
 
 function btoa(input = ''){
   let str = input;
