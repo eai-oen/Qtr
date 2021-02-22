@@ -10,7 +10,6 @@ export default class ScannerScreen extends React.Component {
   state = {
     hasPermission: null,
     scanned: 0,
-    scanning: true,
     loaded: false,
     nreceived: 0,    // number of blocks received
     ereceived: "???",    // number of blocks expected
@@ -39,11 +38,7 @@ export default class ScannerScreen extends React.Component {
   }
 
   decodeOneBlock(blockData){
-    // asusming blockData is a string
-  
-    // get header data
-    // first byte: d
-    // every 8 bytes after that: index of the source block
+    // Decode Header: (number of blocks total, 8 chars)(d, 1 char)(indicies of xored blocks, (d * 8) chars)
     if(this.sourceBlockNum === null){
       this.sourceBlockNum = parseInt(blockData.slice(0, 8));
       this.setState({ereceived: this.sourceBlockNum});
@@ -52,11 +47,10 @@ export default class ScannerScreen extends React.Component {
     let d = parseInt(blockData[8]);
     let inds = new Set();
     for (var i=0; i<d; i++)
-      inds.add( parseInt(blockData.slice(9+i*8, 17+i*8)) );
+      inds.add( parseInt(blockData.slice(9 + i * 8, 17 + i * 8)) );
   
-    // this is the main data; store it as number in bytes
-    let dataStr = blockData.slice(9+d*8);
-    dataStr = atob(dataStr);
+    // Slice off the main data and decode from Base64 transfer format
+    let dataStr = atob(blockData.slice(9+d*8));
   
     this.encodedBlocks.push({
       xord: inds,
@@ -75,7 +69,7 @@ export default class ScannerScreen extends React.Component {
       let removal = [];
       for(let idx of encB.xord.values()) {
         if (this.decodedSourceBlocks[idx] != null){ // if one of the indices is solved
-          encB.data = this.xorStrings(this.decodedSourceBlocks[idx], encB.data); // xor this shit out
+          encB.data = xorStrings(this.decodedSourceBlocks[idx], encB.data); // xor this shit out
           removal.push(idx); // delete this index
         }
       }
@@ -105,21 +99,6 @@ export default class ScannerScreen extends React.Component {
     if (runAgain){
       this.updateEncodedBlocks();
     }
-  }
-
-  xorStrings(a, b){
-    let s = '';
-  
-    // use the longer of the two words to calculate the length of the result
-    for (let i = 0; i < Math.max(a.length, b.length); i++) {
-      // append the result of the char from the code-point that results from
-      // XORing the char codes (or 0 if one string is too short)
-      s += String.fromCharCode(
-        (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0)
-      );
-    }
-  
-    return s;
   }
 
   async componentDidMount() {
@@ -209,4 +188,19 @@ function atob (input = ''){
   }
 
   return output;
+}
+
+function xorStrings(a, b){
+  let s = '';
+
+  // use the longer of the two words to calculate the length of the result
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    // append the result of the char from the code-point that results from
+    // XORing the char codes (or 0 if one string is too short)
+    s += String.fromCharCode(
+      (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0)
+    );
+  }
+
+  return s;
 }

@@ -35,9 +35,12 @@ export default class SenderScreen extends React.Component {
     clearInterval(this.qrInterval);
   }
 
-  pad(x) {
-    while(x.length != 8) { x = "0" + x;}
-    return x;
+  padl(x, target) {
+    if (x.length != target) {
+      let difference = target - x.length;
+      x = "0".repeat(difference) + x;
+    }
+    return x
   }
 
   padr(x, target) {
@@ -82,27 +85,12 @@ export default class SenderScreen extends React.Component {
 		this.qrInterval = setInterval( ()=>this.sendOneEncodedBlock() , 100);
 	}
 
-
-  xorStrings(a, b){
-    let s = '';
-    // use the longer of the two words to calculate the length of the result
-    for (let i = 0; i < Math.max(a.length, b.length); i++) {
-      // append the result of the char from the code-point that results from
-      // XORing the char codes (or 0 if one string is too short)
-      s += String.fromCharCode(
-        (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0)
-      );
-    }
-  
-    return s;
-  }
-
 	sendOneEncodedBlock(){
 	  // k is the maximum number of source blocks a block could have
 	  let k = 5; 
 
 	  // d is the number of source blocks this encoded block should contain
-	  // it shuold be randomly assigned according to the solition distribution
+	  // It shuold be randomly assigned according to the solition distribution
 	  let sample = Math.random();
 	  let cdf = 0;
     let d = null;
@@ -114,31 +102,28 @@ export default class SenderScreen extends React.Component {
 	    }
 	  }
 
-	  // construct headers
-    // first char: d
-    // every 8 char after that: index of the pic
-	  let header = this.pad(this.sourceBlockNum.toString());
-	  header += d.toString();
+	  // Create Header: (number of blocks total, 8 chars)(d, 1 char)(indicies of xored blocks, (d * 8) chars)
+	  let header = this.padl(this.sourceBlockNum.toString(), 8);
+	  header += d.toString(); // 1 <= d <= 5
 	  let inds = new Set();
 	  while (inds.size < d){inds.add(Math.floor(Math.random() * this.sourceBlockNum));}
     inds = Array.from(inds.keys());
     for (let idx of inds) {
-      header += this.pad(idx.toString());
+      header += this.padl(idx.toString(), 8);
     } 
 
-	  // xor d source blocks together	  
+	  // xor the d source blocks together	  
 	  let blocks = new Array(d).fill(null);
     for (let i = 0; i < d; i++) {
       blocks[i] = this.sourceBlocks[inds[i]];
     }
-    blocks = blocks.reduce(this.xorStrings);
+    blocks = blocks.reduce(xorStrings);
     header += btoa(blocks);
 
+    // display the new qr data
 	  this.setState({ qrdata: header });
 	}
 
-
-  
   // activates Document/Image picker and stores file content
   // into state.fileData with base64 encoding
   async pickFile(isImage) {
@@ -165,7 +150,6 @@ export default class SenderScreen extends React.Component {
   }
 
   render() {
-
     return (
       <View style={{flex: 1, alignItems: 'center'}}>
         <View style={{marginTop: 20, justifyContent: 'center'}}>
@@ -230,6 +214,16 @@ function btoa(input = ''){
   return output;
 }
 
+function xorStrings(a, b){
+  let s = '';
+  // use the longer of the two words to calculate the length of the result
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    // append the result of the char from the code-point that results from
+    // XORing the char codes (or 0 if one string is too short)
+    s += String.fromCharCode(
+      (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0)
+    );
+  }
 
-
-
+  return s;
+}
