@@ -64,41 +64,43 @@ export default class ScannerScreen extends React.Component {
 
   updateEncodedBlocks(){
     let runAgain = false;
-    for(let encidx = this.encodedBlocks.length - 1; encidx >= 0; encidx--){
-      let encB = this.encodedBlocks[encidx]
-      let removal = [];
-      for(let idx of encB.xord.values()) {
-        if (this.decodedSourceBlocks[idx] != null){ // if one of the indices is solved
-          encB.data = xorStrings(this.decodedSourceBlocks[idx], encB.data); // xor this shit out
-          removal.push(idx); // delete this index
+    do {
+      runAgain = false;
+      this.setState({scanned: this.encodedBlocks.length});
+      for(let encidx = this.encodedBlocks.length - 1; encidx >= 0; encidx--){
+        let encB = this.encodedBlocks[encidx]
+        let removal = [];
+        for(let idx of encB.xord.values()) {
+          if (this.decodedSourceBlocks[idx] !== null){ // if one of the indices is solved
+            encB.data = xorStrings(this.decodedSourceBlocks[idx], encB.data); // xor this shit out
+            removal.push(idx); // delete this index
+          }
+        }
+        for(let hold of removal) { encB.xord.delete(hold); } // remove designated items from xored set
+    
+        // delete it from encoded if completely empty
+        if (encB.xord.size === 0){
+          this.encodedBlocks.splice(encidx, 1);
+        }
+        // if all but 1 is xor'd out, we move it to decoded
+        if (encB.xord.size === 1){
+          // delete it from encoded
+          let ind = Array.from(encB.xord.values())[0];
+          console.log("decoded block num " + ind);
+          this.encodedBlocks.splice(encidx, 1);
+          if (this.decodedSourceBlocks[ind]===null){
+            // ind is the ssource block index we want to add to  
+  
+            runAgain = true;
+            this.decodedSourceBlocks[ind] = encB.data;
+            this.blocksDecoded++;
+            this.setState({nreceived: this.blocksDecoded});
+            console.log("Decoded so far: " + this.blocksDecoded);
+          }
+  
         }
       }
-      for(let hold of removal) { encB.xord.delete(hold); } // remove designated items from xored set
-  
-      // if all but 1 is xor'd out, we move it to decoded
-      if (encB.xord.size === 1){
-        // delete it from encoded
-        let ind = Array.from(encB.xord.values())[0];
-        console.log("decoded block num " + ind);
-        this.encodedBlocks.splice(encidx, 1);
-        if (this.decodedSourceBlocks[ind]===null){
-          // ind is the ssource block index we want to add to  
-
-          runAgain = true;
-          this.decodedSourceBlocks[ind] = encB.data;
-          this.blocksDecoded++;
-          this.setState({nreceived: this.blocksDecoded});
-          console.log("Decoded so far: " + this.blocksDecoded);
-        }
-
-      }
-    }
-  
-    // if there are new blocks added to source
-    // we should check the encoded blocks again
-    if (runAgain){
-      this.updateEncodedBlocks();
-    }
+    } while(runAgain);
   }
 
   async componentDidMount() {
@@ -115,7 +117,7 @@ export default class ScannerScreen extends React.Component {
       this.prevrece = result.data;
     }
     
-    this.setState((state) => ({scanned: state.scanned + 1}));
+    // this.setState((state) => ({scanned: state.scanned + 1}));
   }
   
   async processFile(base64string, fileExtension) {
